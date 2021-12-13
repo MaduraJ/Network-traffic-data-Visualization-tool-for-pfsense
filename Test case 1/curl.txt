@@ -1,0 +1,2 @@
+curl  -H "Content-Type: application/json" -d '{"client-id":"admin","client-token":"pfsense"}' --ssl-no-revoke -X GET https://192.168.1.100/api/v1/system/arp
+curl  -H Content-Type applicationjson -d '{client-idadmin,client-tokenpfsense}' --ssl-no-revoke -X GET https192.168.1.100apiv1systemarp
