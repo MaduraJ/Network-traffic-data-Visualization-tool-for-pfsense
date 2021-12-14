@@ -1,5 +1,5 @@
 import httpbl
-ip_address='93.185.65.187'
+ip_address=''
 
 bl = httpbl.HttpBL('apikey')
 response = bl.query(ip_address)
