@@ -14,7 +14,7 @@ class LiveCapture(object):
 			while True:
 				capture.sniff(timeout=0)
 				for packet in capture.sniff_continuously():
-					print(packet)
+					print(packet['eth'].field_names)
 					#with open("tempNetTraffic.json","w") as netTraffic:
 					#json.dump(packet,netTraffic,indent=5)
 					#jsonString=json.dump(packet,indent=4)
