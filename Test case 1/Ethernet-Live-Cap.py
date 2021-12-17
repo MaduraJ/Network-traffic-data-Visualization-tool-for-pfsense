@@ -6,17 +6,21 @@ import time
 import subprocess
 import platform
 from get_nic import getnic 
-class LiveCapture:
+
+class TrafficCapture:
 	def __init__(self, sysInterface):
-		self.capInterface = sysInterface
+		self.sysInterface = sysInterface
 
 
-	def CheckNetInterfaces():
+	def __CheckNetInterfaces(self):
 		avlSysInterfaces=getnic.interfaces()
 
-	def Capture():
+		self.netInterface=self.sysInterface
+		return self.netInterface
+
+	def Capture(self):
 		try:
-			capture = pyshark.LiveCapture(interface=capInterface,output_file='tempNetTraffic.pcapng')
+			capture = pyshark.LiveCapture(interface=self.__CheckNetInterfaces(),output_file='tempNetTraffic.pcapng')
 			while True:
 				capture.sniff(timeout=0)
 				for packet in capture.sniff_continuously():
@@ -41,7 +45,8 @@ class LiveCapture:
 
 
 
-LiveCapture("Ethernet")
+test1=TrafficCapture("Wi-Fi")
+test1.Capture()
 
 			
 
