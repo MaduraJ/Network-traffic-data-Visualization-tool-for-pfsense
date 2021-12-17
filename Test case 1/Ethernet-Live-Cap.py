@@ -3,14 +3,20 @@ import json
 from json import JSONEncoder
 import asyncio
 import time
-class LiveCapture(object):
-	def __init__(self, arg):
-		super(ClassName, self).__init__()
-		self.arg = arg
+import subprocess
+import platform
+from get_nic import getnic 
+class LiveCapture:
+	def __init__(self, sysInterface):
+		self.capInterface = sysInterface
 
-	def CaptureFromEthernet():
+
+	def CheckNetInterfaces():
+		avlSysInterfaces=getnic.interfaces()
+
+	def Capture():
 		try:
-			capture = pyshark.LiveCapture(interface='Ethernet',output_file='tempNetTraffic.pcapng')
+			capture = pyshark.LiveCapture(interface=capInterface,output_file='tempNetTraffic.pcapng')
 			while True:
 				capture.sniff(timeout=0)
 				for packet in capture.sniff_continuously():
@@ -32,7 +38,10 @@ class LiveCapture(object):
 			pass
 		finally:
 			pass
-	CaptureFromEthernet()
+
+
+
+LiveCapture("Ethernet")
 
 			
 
