@@ -44,45 +44,7 @@ class TrafficCapture:
 			while  _stopCapture_:
 				for packets in capture.sniff_continuously():
 					#print(packets['IP'].src,packets['IP'].dst)
-					#print(packets)
-					
-					if 'eth' in packets:
-						if eth==True:
-							print(packets.eth.field_names)
-							eth=False
-						else:
-							continue
-					if 'ip' in packets:
-						if ip==True:
-							print(packets.ip.field_names)
-							ip=False
-						else:
-							continue
-					if 'tcp' in packets:
-						if tcp==True:
-							print(packets.tcp.field_names)
-							tcp=False
-						else:
-							continue
-					if 'udp' in packets:
-						if udp==True:
-							print(packets.udp.field_names)
-							udp=False
-						else:
-							continue
-					if 'tls' in packets:
-						if tls==True:
-							print(packets.tls.field_names)
-							tls=False
-						else:
-							continue
-					if (eth==False and ip==False and tcp==False and udp==False and tls==False):
-						print("All field_names identified")
-						
-
-						
-						
-
+					print(packets)
 
 					#with open("tempNetTraffic.json","w") as netTraffic:
 					#json.dump(packets,netTraffic,indent=5)
