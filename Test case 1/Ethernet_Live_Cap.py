@@ -8,11 +8,8 @@ import platform
 from get_nic import getnic 
 
 class TrafficCapture:
-
+	
 	def __init__(self, sysInterface):
-		"""sysInterfacee tells the program which interface to capture network traffic from. 
-		Ex: on windows sysInterface should be--> Ethernet, Wi-Fi
-			on linux  eth0, eth1, wlan0"""
 		self.sysInterface = sysInterface
 
 	
@@ -32,6 +29,9 @@ class TrafficCapture:
 		Capture()
 		Capture is the function that is used to capture network traffic.
 		Instances of TrafficCapture class need a arugment System Interface (sysInterface)
+		sysInterfacee tells the program which interface to capture network traffic from. 
+		Ex: on windows sysInterface should be--> Ethernet, Wi-Fi
+			on linux  eth0, eth1, wlan0
 		"""
 		try:
 			capture = pyshark.LiveCapture(interface=self.__CheckNetInterfaces(),output_file='tempNetTraffic.pcapng',display_filter=None)
