@@ -1,5 +1,5 @@
-<mxfile host="app.diagrams.net" modified="2022-02-22T02:58:16.506Z" agent="5.0 (Windows)" etag="xtwXGEamEvqSSvqtJwaF" version="16.6.1" type="github">
-  <diagram id="0cUgHl0HPYVtTK5nFjOe" name="Page-1">
+<mxfile host="app.diagrams.net" modified="2022-02-22T03:16:39.075Z" agent="5.0 (Windows)" etag="FBixKqtOjK4byuc3_Bfc" version="16.6.1" type="github">
+  <diagram id="0cUgHl0HPYVtTK5nFjOe" name="Mindmap">
     <mxGraphModel dx="2523" dy="1985" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
@@ -22,6 +22,9 @@
         <mxCell id="ihkRBR5KOsuEV5yQLHeV-18" value="" style="edgeStyle=orthogonalEdgeStyle;curved=1;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Times New Roman;fontSize=22;fontColor=#2B2B2B;" parent="1" source="ihkRBR5KOsuEV5yQLHeV-1" target="ihkRBR5KOsuEV5yQLHeV-17" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
+        <mxCell id="TzjAFH_sDjDyefv7mTmy-22" value="" style="edgeStyle=orthogonalEdgeStyle;curved=1;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="ihkRBR5KOsuEV5yQLHeV-1" target="TzjAFH_sDjDyefv7mTmy-21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="ihkRBR5KOsuEV5yQLHeV-1" value="&lt;font style=&quot;font-size: 22px;&quot;&gt;Opensource Firewall automation tool&lt;br style=&quot;font-size: 22px;&quot;&gt;&lt;/font&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#330000;strokeColor=#9673a6;fontColor=#FFFFFF;fontFamily=Times New Roman;fontSize=22;" parent="1" vertex="1">
           <mxGeometry x="350" y="160" width="210" height="140" as="geometry" />
         </mxCell>
@@ -34,14 +37,17 @@
         <mxCell id="ihkRBR5KOsuEV5yQLHeV-3" value="Decide on which layer of the OSI model to monitor and create firewall rules" style="ellipse;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontColor=#ffffff;fontFamily=Times New Roman;fontSize=22;" parent="1" vertex="1">
           <mxGeometry x="-60" y="190" width="270" height="190" as="geometry" />
         </mxCell>
-        <mxCell id="TzjAFH_sDjDyefv7mTmy-16" value="" style="edgeStyle=orthogonalEdgeStyle;curved=1;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="ihkRBR5KOsuEV5yQLHeV-5" target="TzjAFH_sDjDyefv7mTmy-15">
+        <mxCell id="TzjAFH_sDjDyefv7mTmy-16" value="" style="edgeStyle=orthogonalEdgeStyle;curved=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="TzjAFH_sDjDyefv7mTmy-2" target="TzjAFH_sDjDyefv7mTmy-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="TzjAFH_sDjDyefv7mTmy-24" value="" style="edgeStyle=orthogonalEdgeStyle;curved=1;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="ihkRBR5KOsuEV5yQLHeV-5" target="TzjAFH_sDjDyefv7mTmy-23">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="ihkRBR5KOsuEV5yQLHeV-5" value="Network layer was chosen becuase" style="ellipse;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontColor=#ffffff;fontFamily=Times New Roman;fontSize=22;" parent="1" vertex="1">
           <mxGeometry x="-220" y="370" width="170" height="120" as="geometry" />
         </mxCell>
         <mxCell id="ihkRBR5KOsuEV5yQLHeV-7" value="Network monitoring feature" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FF0000;strokeColor=#b85450;fontFamily=Times New Roman;fontSize=22;fontColor=#FFFFFF;" parent="1" vertex="1">
-          <mxGeometry x="130" y="-60" width="200" height="130" as="geometry" />
+          <mxGeometry x="240" y="-55" width="200" height="130" as="geometry" />
         </mxCell>
         <mxCell id="ihkRBR5KOsuEV5yQLHeV-12" value="" style="edgeStyle=orthogonalEdgeStyle;curved=1;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Times New Roman;fontSize=22;fontColor=#2B2B2B;" parent="1" source="ihkRBR5KOsuEV5yQLHeV-9" target="ihkRBR5KOsuEV5yQLHeV-11" edge="1">
           <mxGeometry relative="1" as="geometry" />
@@ -53,10 +59,10 @@
           <mxGeometry x="360" y="540" width="190" height="110" as="geometry" />
         </mxCell>
         <mxCell id="ihkRBR5KOsuEV5yQLHeV-13" value="Central management Interface" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FF0000;strokeColor=#A50040;fontColor=#ffffff;fontFamily=Times New Roman;fontSize=22;" parent="1" vertex="1">
-          <mxGeometry x="350" y="-60" width="210" height="140" as="geometry" />
+          <mxGeometry x="450" y="-60" width="210" height="140" as="geometry" />
         </mxCell>
         <mxCell id="ihkRBR5KOsuEV5yQLHeV-15" value="Add scanning features" style="ellipse;whiteSpace=wrap;html=1;fillColor=#0050ef;strokeColor=#001DBC;fontColor=#ffffff;fontFamily=Times New Roman;fontSize=22;" parent="1" vertex="1">
-          <mxGeometry x="600" y="-60" width="210" height="140" as="geometry" />
+          <mxGeometry x="670" y="-55" width="210" height="140" as="geometry" />
         </mxCell>
         <mxCell id="ihkRBR5KOsuEV5yQLHeV-20" value="" style="edgeStyle=orthogonalEdgeStyle;curved=1;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Times New Roman;fontSize=22;fontColor=#2B2B2B;" parent="1" source="ihkRBR5KOsuEV5yQLHeV-17" target="ihkRBR5KOsuEV5yQLHeV-19" edge="1">
           <mxGeometry relative="1" as="geometry" />
@@ -95,7 +101,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="TzjAFH_sDjDyefv7mTmy-4" value="Use online IP Blacklist data base" style="ellipse;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontColor=#ffffff;fontFamily=Times New Roman;fontSize=22;" vertex="1" parent="1">
-          <mxGeometry x="70" y="610" width="200" height="120" as="geometry" />
+          <mxGeometry y="600" width="200" height="120" as="geometry" />
         </mxCell>
         <mxCell id="TzjAFH_sDjDyefv7mTmy-6" value="Project Honeypot" style="ellipse;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontColor=#ffffff;fontFamily=Times New Roman;fontSize=22;" vertex="1" parent="1">
           <mxGeometry x="-80" y="765" width="110" height="65" as="geometry" />
@@ -110,13 +116,31 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="TzjAFH_sDjDyefv7mTmy-15" value="How to create pfsense firewall rules" style="ellipse;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontColor=#ffffff;fontFamily=Times New Roman;fontSize=22;" vertex="1" parent="1">
-          <mxGeometry x="-250" y="530" width="150" height="110" as="geometry" />
+          <mxGeometry x="230" y="610" width="150" height="110" as="geometry" />
         </mxCell>
         <mxCell id="TzjAFH_sDjDyefv7mTmy-17" value="jaredhendrickson13 / pfsense-api" style="ellipse;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontColor=#ffffff;fontFamily=Times New Roman;fontSize=22;" vertex="1" parent="1">
-          <mxGeometry x="-330" y="690" width="210" height="120" as="geometry" />
+          <mxGeometry x="330" y="760" width="210" height="120" as="geometry" />
         </mxCell>
         <mxCell id="TzjAFH_sDjDyefv7mTmy-19" value="Json for intermediate data exchange&amp;nbsp; " style="ellipse;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontColor=#ffffff;fontFamily=Times New Roman;fontSize=22;" vertex="1" parent="1">
           <mxGeometry x="630" y="380" width="180" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="TzjAFH_sDjDyefv7mTmy-21" value="ACL Support" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FF0000;strokeColor=#9673a6;fontColor=#FFFFFF;fontFamily=Times New Roman;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry x="20" y="-55" width="210" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="TzjAFH_sDjDyefv7mTmy-26" value="" style="edgeStyle=orthogonalEdgeStyle;curved=1;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="TzjAFH_sDjDyefv7mTmy-23" target="TzjAFH_sDjDyefv7mTmy-25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="TzjAFH_sDjDyefv7mTmy-28" value="" style="edgeStyle=orthogonalEdgeStyle;curved=1;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="TzjAFH_sDjDyefv7mTmy-23" target="TzjAFH_sDjDyefv7mTmy-27">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="TzjAFH_sDjDyefv7mTmy-23" value="How to monitor network layer" style="ellipse;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontColor=#ffffff;fontFamily=Times New Roman;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry x="-250" y="550" width="160" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="TzjAFH_sDjDyefv7mTmy-25" value="Port mirroring of remote hosts or Pfsense Box" style="ellipse;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontColor=#ffffff;fontFamily=Times New Roman;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry x="-425" y="687.5" width="180" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="TzjAFH_sDjDyefv7mTmy-27" value="Pyshark and Wireshark " style="ellipse;whiteSpace=wrap;html=1;fillColor=#008a00;strokeColor=#005700;fontColor=#ffffff;fontFamily=Times New Roman;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry x="-230" y="705" width="150" height="85" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
