@@ -1,20 +1,32 @@
-<mxfile host="app.diagrams.net" modified="2022-02-22T03:58:52.683Z" agent="5.0 (Windows)" etag="72eBDcWa8Z9TRSXfFshv" version="16.6.1" type="github">
+<mxfile host="app.diagrams.net" modified="2022-02-22T05:31:45.026Z" agent="5.0 (Windows)" etag="_6_yiJMI6XK_8S-h1izu" version="16.6.1" type="github">
   <diagram id="C5RBs43oDa-KdzZeNtuy" name="Page-1">
     <mxGraphModel dx="1422" dy="752" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="WIyWlLk6GJQsqaUBKTNV-0" />
         <mxCell id="WIyWlLk6GJQsqaUBKTNV-1" parent="WIyWlLk6GJQsqaUBKTNV-0" />
-        <mxCell id="IGrWSwenGODjIcfFNpxI-1" value="Actor" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
-          <mxGeometry x="80" y="280" width="30" height="60" as="geometry" />
+        <mxCell id="m-Big1HEkiJPFNKOQBip-4" value="" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="IGrWSwenGODjIcfFNpxI-1" target="m-Big1HEkiJPFNKOQBip-3">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="IGrWSwenGODjIcfFNpxI-4" value="" style="group" vertex="1" connectable="0" parent="WIyWlLk6GJQsqaUBKTNV-1">
+        <mxCell id="m-Big1HEkiJPFNKOQBip-6" value="" style="edgeStyle=none;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="IGrWSwenGODjIcfFNpxI-1" target="m-Big1HEkiJPFNKOQBip-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="IGrWSwenGODjIcfFNpxI-1" value="Administrator" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+          <mxGeometry x="80" y="280" width="40" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="IGrWSwenGODjIcfFNpxI-4" value="" style="group" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1" connectable="0">
           <mxGeometry x="180" y="40" width="510" height="580" as="geometry" />
         </mxCell>
-        <mxCell id="IGrWSwenGODjIcfFNpxI-0" value="" style="swimlane;startSize=0;" vertex="1" parent="IGrWSwenGODjIcfFNpxI-4">
+        <mxCell id="IGrWSwenGODjIcfFNpxI-0" value="" style="swimlane;startSize=0;" parent="IGrWSwenGODjIcfFNpxI-4" vertex="1">
           <mxGeometry y="50" width="510" height="530" as="geometry" />
         </mxCell>
-        <mxCell id="IGrWSwenGODjIcfFNpxI-3" value="Firewall automation system" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="IGrWSwenGODjIcfFNpxI-4">
-          <mxGeometry x="177" width="156" height="40" as="geometry" />
+        <mxCell id="IGrWSwenGODjIcfFNpxI-3" value="Firewall automation script" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="IGrWSwenGODjIcfFNpxI-0" vertex="1">
+          <mxGeometry x="170" y="10" width="156" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m-Big1HEkiJPFNKOQBip-3" value="&lt;div align=&quot;center&quot;&gt;Check new rules&lt;/div&gt;" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=top;align=center;" vertex="1" parent="IGrWSwenGODjIcfFNpxI-0">
+          <mxGeometry x="160" y="310" width="90" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="m-Big1HEkiJPFNKOQBip-5" value="Remove new rules" style="ellipse;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="IGrWSwenGODjIcfFNpxI-0">
+          <mxGeometry x="160" y="380" width="90" height="40" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
