@@ -7,31 +7,31 @@ import subprocess
 import platform
 from get_nic import getnic 
 
-class IP:
+class _IP:
 	""" """
-	def __init__(self, IP_List=[]):
-		self.ip_List=IP_List
-
-	def cacheIPs(self):
-		print(self.ip_List)
+	def __init__(self):
+		pass
+	def GetSourceIPs(self,srcIP=set()):
+		self.sourceIPList=set()
+		self.sourceIPList.add(srcIp)
+		print(sourceIPList)
+	def GetDestinationIPs(self,dstIP=set()):
+		self.destinationIPList=set()
+		self.destinationIPList.add(dstIP)
+		print(destinationIPList)
 		
-
-
 class TrafficCapture:
 	
 	def __init__(self, sysInterface):
 		self.sysInterface = sysInterface
 
-	
 	def __CheckNetInterfaces(self):
 		avlSysInterfaces=getnic.interfaces()
 
 		self.netInterface=self.sysInterface
 		return self.netInterface
-	
-	def passIPs(self):
-		ipList=IP()
-		ipList.cacheIPs()
+
+	ipList=_IP()
 
 	global _stopCapture_
 	_stopCapture_=True
@@ -51,7 +51,6 @@ class TrafficCapture:
 			#output_file='tempNetTraffic.pcapng',
 			capture = pyshark.LiveCapture(interface=self.__CheckNetInterfaces(),display_filter=None)
 			#capture.set_debug()
-			capture.sniff(timeout=0)
 			eth=True
 			ip=True
 			tcp=True
@@ -61,12 +60,14 @@ class TrafficCapture:
 			destinationIPset=set()
 			while  _stopCapture_:
 				for packets in capture.sniff_continuously():
-					
-					sourceIPset.add(packets['IP'].src)
-					destinationIPset.add(packets['IP'].dst)
-					for x in sourceIPset,destinationIPset:
-						print(x)
-
+					#dir(capture.my_layer)
+					if ('IP' in packets):#'IP' in capture
+						sourceIPset.add(packets['IP'].src)
+						destinationIPset.add(packets['IP'].dst)
+						for x in sourceIPset,destinationIPset:
+							print(x)
+					else:
+						continue
 					#print(packets['IP'].src,packets['IP'].dst)
 					#print(packets['IP'].src,packets['IP'].dst)
 					#for x in packets:
@@ -93,7 +94,6 @@ class TrafficCapture:
 
 
 test1=TrafficCapture("Ethernet")
-test1.passIPs()
 test1.Capture()
 
 
