@@ -1,4 +1,5 @@
 import pyshark
+import httpbl
 import json
 from json import JSONEncoder
 import asyncio
@@ -12,7 +13,7 @@ class IP:
 	def __init__(self):
 		self.srcIPList=set()
 		self.dstIPList=set()
-
+		self.srcdstList=set()
 	def SourceIPs(self,srcIP):
 		self.srcIPList.add(srcIP)
 
@@ -21,8 +22,25 @@ class IP:
 
 	def getSourceIPs(self):
 		return self.srcIPList
+
 	def getDestinationIPs(self):
 		return self.dstIPList
+
+	def checkBlackListStatus(self):
+		self.srcdstList=self.srcIPList.copy()
+		self.srcdstLis=self.dstIPList.copy()
+		bl = httpbl.HttpBL('vwmjfxvftsrb')
+		print(self.srcdstList)
+		#for ips in self.srcdstList:
+			#response = bl.query(ips)
+			#time.sleep(5)
+			#print(response['threat_score'])
+			#print(response['type'])
+			#print(response['days_since_last_activity'])
+			#print(response['name'])
+
+
+		
 
 class TrafficCapture:
 	def __init__(self, sysInterface):
@@ -68,7 +86,8 @@ class TrafficCapture:
 						destinationIPset.add(packets['IP'].dst)
 						ipList.SourceIPs(packets['IP'].src)
 						ipList.DestinationIPs(packets['IP'].dst)
-						print(ipList.getSourceIPs(),ipList.getDestinationIPs())
+						ipList.checkBlackListStatus()
+						#print(ipList.getSourceIPs(),ipList.getDestinationIPs())
 					else:
 						continue
 					#print(packets['IP'].src,packets['IP'].dst)
