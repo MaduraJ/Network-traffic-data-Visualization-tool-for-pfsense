@@ -7,21 +7,24 @@ import subprocess
 import platform
 from get_nic import getnic 
 
-class _IP:
+class IP:
 	""" """
 	def __init__(self):
-		pass
-	def GetSourceIPs(self,srcIP=set()):
-		self.sourceIPList=set()
-		self.sourceIPList.add(srcIp)
-		print(sourceIPList)
-	def GetDestinationIPs(self,dstIP=set()):
-		self.destinationIPList=set()
-		self.destinationIPList.add(dstIP)
-		print(destinationIPList)
-		
+		self.srcIPList=set()
+		self.dstIPList=set()
+
+	def SourceIPs(self,srcIP):
+		self.srcIPList.add(srcIP)
+
+	def DestinationIPs(self,dstIP):
+		self.dstIPList.add(dstIP)
+
+	def getSourceIPs(self):
+		return self.srcIPList
+	def getDestinationIPs(self):
+		return self.dstIPList
+
 class TrafficCapture:
-	
 	def __init__(self, sysInterface):
 		self.sysInterface = sysInterface
 
@@ -30,8 +33,6 @@ class TrafficCapture:
 
 		self.netInterface=self.sysInterface
 		return self.netInterface
-
-	ipList=_IP()
 
 	global _stopCapture_
 	_stopCapture_=True
@@ -56,6 +57,7 @@ class TrafficCapture:
 			tcp=True
 			udp=True
 			tls=True
+			ipList=IP()
 			sourceIPset=set()
 			destinationIPset=set()
 			while  _stopCapture_:
@@ -64,8 +66,9 @@ class TrafficCapture:
 					if ('IP' in packets):#'IP' in capture
 						sourceIPset.add(packets['IP'].src)
 						destinationIPset.add(packets['IP'].dst)
-						for x in sourceIPset,destinationIPset:
-							print(x)
+						ipList.SourceIPs(packets['IP'].src)
+						ipList.DestinationIPs(packets['IP'].dst)
+						print(ipList.getSourceIPs(),ipList.getDestinationIPs())
 					else:
 						continue
 					#print(packets['IP'].src,packets['IP'].dst)
