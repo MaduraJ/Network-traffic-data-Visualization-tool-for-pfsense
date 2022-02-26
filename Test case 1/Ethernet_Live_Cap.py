@@ -5,7 +5,7 @@ from json import JSONEncoder
 import asyncio
 import time
 import subprocess
-import platform
+import requests
 from get_nic import getnic 
 
 class IP:
@@ -14,6 +14,7 @@ class IP:
 		self.srcIPList=set()
 		self.dstIPList=set()
 		self.srcdstList=set()
+		self.threatList=set()
 	def SourceIPs(self,srcIP):
 		self.srcIPList.add(srcIP)
 
@@ -21,23 +22,57 @@ class IP:
 		self.dstIPList.add(dstIP)
 
 	def getSourceIPs(self):
+		#for x in self.srcIPList:
+			#print(x)
 		return self.srcIPList
 
 	def getDestinationIPs(self):
+		#for x in self.dstIPList:
+			#print(x)
 		return self.dstIPList
 
 	def checkBlackListStatus(self):
 		self.srcdstList=self.srcIPList.copy()
 		self.srcdstLis=self.dstIPList.copy()
+		#print(self.srcdstList)
 		bl = httpbl.HttpBL('vwmjfxvftsrb')
-		print(self.srcdstList)
-		#for ips in self.srcdstList:
-			#response = bl.query(ips)
-			#time.sleep(5)
-			#print(response['threat_score'])
-			#print(response['type'])
-			#print(response['days_since_last_activity'])
-			#print(response['name'])
+		#print(self.srcdstList)
+		self.link="https://192.168.1.100/api/v1/firewall/rule"
+		self.headers={'Content-Type': 'application/json'}
+		self.pemCert='pfsense1.localdomain.pem'
+		#while(len(self.srcdstList)<100)
+		for ips in self.srcdstList:
+			response = bl.query(ips)
+
+			print("threat_score {0}".format(response['threat_score']),ips)
+			time.sleep(1)
+			if(response['threat_score']>10):
+				try:
+					if(ips in self.threatList):
+						continue
+					else:
+						print("THREAT DETECTED")
+						self.sringIP=str(ips)
+						self.threatList.add(ips)
+						self.paraM={"client-id":"admin","client-token":"pfsense","type": "block","interface": "wan","ipprotocol":"inet","protocol":"tcp/udp","src":"","srcport":"any","dst":"","dstport": "any","descr": "Automated api rule test"}
+						self.paraM['src']=ips
+						self.paraM['dst']=ips
+						self.data=json.dumps(self.paraM)
+						response=requests.post(self.link,verify=self.pemCert,data=self.data,headers=self.headers)
+						#print(response.url)
+						print(response)
+						#print(json.dumps(response.content))
+						print(response.content)
+						response.close()
+						#help(response)
+				except Exception as e:
+					print(e)
+			else:
+				print("NETWORK MONITORING ACTIVE")
+				#print(response['threat_score'])
+				#print(response['type'])
+				#print(response['days_since_last_activity'])
+				#print(response['name'])
 
 
 		
@@ -82,10 +117,11 @@ class TrafficCapture:
 				for packets in capture.sniff_continuously():
 					#dir(capture.my_layer)
 					if ('IP' in packets):#'IP' in capture
-						sourceIPset.add(packets['IP'].src)
-						destinationIPset.add(packets['IP'].dst)
+						#sourceIPset.add(packets['IP'].src)
+						#destinationIPset.add(packets['IP'].dst)
 						ipList.SourceIPs(packets['IP'].src)
 						ipList.DestinationIPs(packets['IP'].dst)
+						#print(ipList.getSourceIPs())
 						ipList.checkBlackListStatus()
 						#print(ipList.getSourceIPs(),ipList.getDestinationIPs())
 					else:
