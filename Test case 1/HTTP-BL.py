@@ -1,7 +1,7 @@
 import httpbl
-ip_address='172.70.123.38'
+ip_address='134.119.216.167'
 
-bl = httpbl.HttpBL('')
+bl = httpbl.HttpBL('vwmjfxvftsrb')
 response = bl.query(ip_address)
 print(response)
 #print(response.items())
