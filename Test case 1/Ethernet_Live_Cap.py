@@ -17,13 +17,16 @@ class IP:
 		self.threatList=set()
 	def SourceIPs(self,srcIP):
 		self.srcIPList.add(srcIP)
+		self.srcdstList=self.srcIPList.copy()
 
 	def DestinationIPs(self,dstIP):
 		self.dstIPList.add(dstIP)
+		self.srcdstLis=self.dstIPList.copy()
 
 	def getSourceIPs(self):
 		#for x in self.srcIPList:
 			#print(x)
+		#print(len(self.srcIPList))
 		return self.srcIPList
 
 	def getDestinationIPs(self):
@@ -32,8 +35,6 @@ class IP:
 		return self.dstIPList
 
 	def checkBlackListStatus(self):
-		self.srcdstList=self.srcIPList.copy()
-		self.srcdstLis=self.dstIPList.copy()
 		#print(self.srcdstList)
 		bl = httpbl.HttpBL('vwmjfxvftsrb')
 		#print(self.srcdstList)
@@ -43,9 +44,9 @@ class IP:
 		#while(len(self.srcdstList)<100)
 		for ips in self.srcdstList:
 			response = bl.query(ips)
-
+			time.sleep(.500)
 			print("threat_score {0}".format(response['threat_score']),ips)
-			time.sleep(1)
+			#time.sleep(1)
 			if(response['threat_score']>10):
 				try:
 					if(ips in self.threatList):
@@ -67,12 +68,15 @@ class IP:
 						#help(response)
 				except Exception as e:
 					print(e)
+				finally:
+					pass
 			else:
 				print("NETWORK MONITORING ACTIVE")
 				#print(response['threat_score'])
 				#print(response['type'])
 				#print(response['days_since_last_activity'])
 				#print(response['name'])
+		
 
 
 		
