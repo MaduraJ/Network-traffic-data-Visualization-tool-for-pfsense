@@ -2,19 +2,20 @@ import pyshark
 import httpbl
 import json
 from json import JSONEncoder
-import asyncio
+import threading
 import time
-import subprocess
 import requests
 from get_nic import getnic 
 
-class IP:
+class IP(threading.Thread):
 	""" """
 	def __init__(self):
+		super().__init__()
 		self.srcIPList=set()
 		self.dstIPList=set()
 		self.srcdstList=set()
 		self.threatList=set()
+
 	def SourceIPs(self,srcIP):
 		self.srcIPList.add(srcIP)
 		self.srcdstList=self.srcIPList.copy()
@@ -76,13 +77,17 @@ class IP:
 				#print(response['type'])
 				#print(response['days_since_last_activity'])
 				#print(response['name'])
+	def run(self):
+		self.checkBlackListStatus()
+		
 		
 
 
 		
 
-class TrafficCapture:
+class TrafficCapture(threading.Thread):
 	def __init__(self, sysInterface):
+		super().__init__()
 		self.sysInterface = sysInterface
 
 	def __CheckNetInterfaces(self):
@@ -126,7 +131,7 @@ class TrafficCapture:
 						ipList.SourceIPs(packets['IP'].src)
 						ipList.DestinationIPs(packets['IP'].dst)
 						#print(ipList.getSourceIPs())
-						ipList.checkBlackListStatus()
+						ipList.start()
 						#print(ipList.getSourceIPs(),ipList.getDestinationIPs())
 					else:
 						continue
@@ -138,8 +143,6 @@ class TrafficCapture:
 					#json.dump(packets,netTraffic,indent=5)
 					#jsonString=json.dump(packets,indent=4)
 					#jsonFile.write(jsonString)
-
-
 		except EOFError as e:
 			print(e)
 		except Exception as e:
@@ -151,13 +154,16 @@ class TrafficCapture:
 			pass
 		finally:
 			pass
+		#ipList.join()
+	def run(self):
+		self.Capture()
 
 
 
 
 test1=TrafficCapture("Ethernet")
-test1.Capture()
-
+test1.start()
+	
 
 			
 
