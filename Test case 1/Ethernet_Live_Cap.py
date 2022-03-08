@@ -1,34 +1,52 @@
-import pyshark
-import httpbl
-import json
+import pyshark, httpbl, json, threading, collections, gc
 from json import JSONEncoder
-import threading
+from get_nic import getnic 
 import time
 import requests
-from get_nic import getnic 
 
-class IP(threading.Thread):
+class IP:
 	""" """
 	def __init__(self):
-		super().__init__()
 		self.srcIPList=set()
 		self.dstIPList=set()
-		self.srcdstList=set()
+		#self.srcdstList=set()
+		self.srcdstList = collections.deque()
+		self.Mutex_lock=threading.Lock()
 		self.threatList=set()
-
+		self.checkedIPset=set()
 	def SourceIPs(self,srcIP):
 		self.srcIPList.add(srcIP)
-		self.srcdstList=self.srcIPList.copy()
+		for itmes in self.srcIPList:
+			if not self.srcIPList:
+				continue
+			if itmes in self.srcdstList:
+				continue
+			else:
+				self.Mutex_lock.acquire()
+				self.srcdstList.append(itmes)
+				self.Mutex_lock.release()
+
+		#self.srcdstList=self.srcIPList.copy()
 
 	def DestinationIPs(self,dstIP):
 		self.dstIPList.add(dstIP)
-		self.srcdstLis=self.dstIPList.copy()
+		for itmes in self.dstIPList:
+			if not self.dstIPList:
+				continue
+			if itmes in self.srcdstList:
+				continue
+			else:
+				self.Mutex_lock.acquire()
+				self.srcdstList.append(itmes)
+				self.Mutex_lock.release()
+		#self.srcdstLis=self.dstIPList.copy()
 
 	def getSourceIPs(self):
 		#for x in self.srcIPList:
 			#print(x)
 		#print(len(self.srcIPList))
-		return self.srcIPList
+		#return self.srcIPList
+		return self.srcdstList
 
 	def getDestinationIPs(self):
 		#for x in self.dstIPList:
@@ -43,17 +61,22 @@ class IP(threading.Thread):
 		self.headers={'Content-Type': 'application/json'}
 		self.pemCert='pfsense1.localdomain.pem'
 		#while(len(self.srcdstList)<100)
-		for ips in self.srcdstList:
-			response = bl.query(ips)
-			time.sleep(.500)
-			print("threat_score {0}".format(response['threat_score']),ips)
-			#time.sleep(1)
-			if(response['threat_score']>10):
-				try:
-					if(ips in self.threatList):
-						continue
-					else:
-						print("THREAT DETECTED")
+		for ips in self.srcdstList: #Loop through Source and destination IPs
+			try:
+				if not self.srcdstList:
+					continue
+				if (ips in self.checkedIPset):
+					print(f'{ips} has already cheked against the HttpBL')
+					continue
+					
+
+				else:
+					response = bl.query(ips)
+					if(response['threat_score']>10):
+						print(f'{ips} THREAT DETECTED WITH {0}',response['threat_score'])
+						if ips in self.threatList:
+							continue
+						self.threatList.add(ips)
 						self.sringIP=str(ips)
 						self.threatList.add(ips)
 						self.paraM={"client-id":"admin","client-token":"pfsense","type": "block","interface": "wan","ipprotocol":"inet","protocol":"tcp/udp","src":"","srcport":"any","dst":"","dstport": "any","descr": "Automated api rule test"}
@@ -61,33 +84,58 @@ class IP(threading.Thread):
 						self.paraM['dst']=ips
 						self.data=json.dumps(self.paraM)
 						response=requests.post(self.link,verify=self.pemCert,data=self.data,headers=self.headers)
-						#print(response.url)
-						print(response)
-						#print(json.dumps(response.content))
-						print(response.content)
-						response.close()
-						#help(response)
-				except Exception as e:
-					print(e)
-				finally:
-					pass
+						print(f'{response} \n')
+						print(f'{response.content} \n')
+						
+
+					self.checkedIPset.add(ips)
+					#if((len(self.srcdstList))<=2):
+
+						#continue
+					#else:
+						#print("MONITORING ACTIVEcl")
+						#self.srcdstList.pop()
+			except Exception as e:
+				print(e)
+			except RuntimeError:
+				print("MONITORING ACTIVE")
 			else:
-				print("NETWORK MONITORING ACTIVE")
+				pass
+			finally:
+				pass
+			
+			
+			#print("threat_score {0}".format(),ips)
+			#time.sleep(1)
+				#try:
+					#if(ips in self.threatList):
+						#continue
+					#else:
+						#print("")
+						
+						#print(response.url)
+						
+						#print(json.dumps(response.content))
+						
+						#response.close()
+						#help(response)
+				#except Exception as e:
+					#print(e)
+				#finally:
+					#pass
+			#else:
+				#print("NETWORK MONITORING ACTIVE")
 				#print(response['threat_score'])
 				#print(response['type'])
 				#print(response['days_since_last_activity'])
 				#print(response['name'])
-	def run(self):
-		self.checkBlackListStatus()
-		
 		
 
 
 		
 
-class TrafficCapture(threading.Thread):
+class TrafficCapture:
 	def __init__(self, sysInterface):
-		super().__init__()
 		self.sysInterface = sysInterface
 
 	def __CheckNetInterfaces(self):
@@ -128,10 +176,18 @@ class TrafficCapture(threading.Thread):
 					if ('IP' in packets):#'IP' in capture
 						#sourceIPset.add(packets['IP'].src)
 						#destinationIPset.add(packets['IP'].dst)
-						ipList.SourceIPs(packets['IP'].src)
-						ipList.DestinationIPs(packets['IP'].dst)
+						addSrcIPList=threading.Thread(target=ipList.SourceIPs(packets['IP'].src))
+						addSrcIPList.start()
+						addSrcIPList.join()
+						
+						addDstIPList=threading.Thread(target=ipList.DestinationIPs(packets['IP'].dst))
+						addDstIPList.start()
+						addDstIPList.join()
 						#print(ipList.getSourceIPs())
-						ipList.start()
+						
+						IPblacklistThread=threading.Thread(target=ipList.checkBlackListStatus)
+						IPblacklistThread.start()
+						IPblacklistThread.join()
 						#print(ipList.getSourceIPs(),ipList.getDestinationIPs())
 					else:
 						continue
@@ -143,8 +199,13 @@ class TrafficCapture(threading.Thread):
 					#json.dump(packets,netTraffic,indent=5)
 					#jsonString=json.dump(packets,indent=4)
 					#jsonFile.write(jsonString)
+
+
+
 		except EOFError as e:
 			print(e)
+		except RuntimeError:
+				print("MONITORING ACTIVE")
 		except Exception as e:
 			print(e)
 		except KeyboardInterrupt:
@@ -154,16 +215,17 @@ class TrafficCapture(threading.Thread):
 			pass
 		finally:
 			pass
-		#ipList.join()
-	def run(self):
-		self.Capture()
 
 
 
 
 test1=TrafficCapture("Ethernet")
-test1.start()
-	
+TestThread=threading.Thread(target=test1.Capture)
+gc.enable()
+TestThread.start()
+TestThread.join()
+
+
 
 			
 
