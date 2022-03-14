@@ -1,8 +1,11 @@
-import pyshark, httpbl, json, threading, collections, gc
+import pyshark, httpbl, json, threading #threading non-functional 
+import collections, gc
 from json import JSONEncoder
 from get_nic import getnic 
 import time
 import requests
+import bigdatacloudapi
+
 
 class IP:
 	""" """
@@ -10,14 +13,96 @@ class IP:
 		self.srcIPList=set()
 		self.dstIPList=set()
 		#self.srcdstList=set()
+		self.checkedIPset=set()
 		self.srcdstList = collections.deque()
+
 		self.Mutex_lock=threading.Lock()
 		self.threatList=set()
-		self.checkedIPset=set()
+
+		self.monitoringOnly=False
+		self.networkMonitoringEnable=None
+		self.TorExitBlockEnable=None
+		self.httpBlHeaders=None
+		self.isFirewallUP=False
+		self.httpBLKey='vwmjfxvftsrb'
+		self.pemCert='pfsense1.localdomain.pem'
+		self.maximumAllowedThreatScore=10
+		self.headers={'Content-Type': 'application/json'}
+		
+		
+		self.hostName="192.168.1.100"
+		self.client_ID='admin'
+		self.clien_Token='pfsense'
+		self.rule_Type='block'
+		self.rule_Interface='wan'
+
+
+		self.unableToReachMSG='Unable to Reach Firewall Check if the Network, Firewall is UP and Running'
+		self.continueTimeOutMSG='Connection Timeout: Check if the Network, Firewall is UP and Running'
+		self.tooManyRedirectsMSG='Too Many Redirects: Bad URL'
+		self.requestLibraryErrorMSG='Request Library Error'
+
+
+	def HostStatusCheck(self):
+		statusCheckURL=f"https://{self.hostName}/api/v1/firewall/states"
+		statesAuth={"client-id": "", "client-token": ""}
+		statesAuth["client-id"]=self.client_ID
+		statesAuth["client-token"]=self.clien_Token
+		self.statusAuthdata=json.dumps(statesAuth)
+		try:
+			firewallStatus=requests.get(statusCheckURL,verify=self.pemCert,data=self.statusAuthdata)
+			if (firewallStatus.status_code==200):
+				self.isFirewallUP=True
+				print(f'(OK) :{self.hostName} is UP network monitoring has started')
+				#return self.isFirewallUP
+			elif(firewallStatus.status_code==400):
+				self.isFirewallUP=False
+				print(f'{self.hostName} (Bad Request) : An error was found within your requested parameters ')
+				return self.isFirewallUP
+			elif(firewallStatus.status_code==401):
+				self.isFirewallUP=False
+				print(f'{self.hostName} (Unauthorized) : API client has not completed authentication or authorization successfully ')
+				return self.isFirewallUP
+			elif(firewallStatus.status_code==403):
+				self.isFirewallUP=False
+				print(f'{self.hostName}  (Forbidden) : The API endpoint has refused your call. Commonly due to your access settings found in System > API ')
+				return self.isFirewallUP
+			elif(firewallStatus.status_code==404):
+				self.isFirewallUP=False
+				print(f'{self.hostName} (Not found) : Either the API endpoint or requested data was not found ')
+				return self.isFirewallUP
+			elif(firewallStatus.status_code==500):
+				self.isFirewallUP=False
+				print(f'{self.hostName} (Server error) : The API endpoint encountered an unexpected error processing your API request ')
+				return self.isFirewallUP
+			else:
+				self.isFirewallUP=False
+				print(f'{self.hostName} (ERROR) : Contact admin ')
+				return self.isFirewallUP
+
+		except requests.exceptions.RequestException as e:
+			print(f"{self.unableToReachMSG}")
+		except requests.exceptions.Timeout as e:
+			print(f"{self.continueTimeOutMSG}")
+		except requests.exceptions.TooManyRedirects:
+			print(f"{self.tooManyRedirectsMSG}")
+		except requests.exceptions.RequestException as e:
+			print(f"{self.requestLibraryErrorMSG}")
+		except Exception as e:
+			raise
+		else:
+			pass
+		finally:
+			pass
+		
+
+
 	def SourceIPs(self,srcIP):
 		self.srcIPList.add(srcIP)
 		for itmes in self.srcIPList:
-			if not self.srcIPList:
+			if (itmes==" " or ""):
+				continue
+			if not self.srcIPList: #check empty status
 				continue
 			if itmes in self.srcdstList:
 				continue
@@ -31,6 +116,8 @@ class IP:
 	def DestinationIPs(self,dstIP):
 		self.dstIPList.add(dstIP)
 		for itmes in self.dstIPList:
+			if (itmes==" "or""):#check empty status
+				continue
 			if not self.dstIPList:
 				continue
 			if itmes in self.srcdstList:
@@ -42,11 +129,11 @@ class IP:
 		#self.srcdstLis=self.dstIPList.copy()
 
 	def getSourceIPs(self):
-		#for x in self.srcIPList:
+		#for x in self.srcdstList:
 			#print(x)
 		#print(len(self.srcIPList))
-		#return self.srcIPList
 		return self.srcdstList
+		#return self.dstIPList
 
 	def getDestinationIPs(self):
 		#for x in self.dstIPList:
@@ -55,39 +142,68 @@ class IP:
 
 	def checkBlackListStatus(self):
 		#print(self.srcdstList)
-		bl = httpbl.HttpBL('vwmjfxvftsrb')
+		bl = httpbl.HttpBL(self.httpBLKey)
 		#print(self.srcdstList)
-		self.link="https://192.168.1.100/api/v1/firewall/rule"
-		self.headers={'Content-Type': 'application/json'}
-		self.pemCert='pfsense1.localdomain.pem'
+		self.ruleCreationlink=f"https://{self.hostName}/api/v1/firewall/rule"
 		#while(len(self.srcdstList)<100)
-		for ips in self.srcdstList: #Loop through Source and destination IPs
+		#Loop through Source and destination IPs
+		for ips in self.srcdstList: 
 			try:
 				if not self.srcdstList:
 					continue
 				if (ips in self.checkedIPset):
-					print(f'{ips} has already cheked against the HttpBL')
+					#print(f'{ips} has already cheked against the HttpBL')
 					continue
-					
-
 				else:
 					response = bl.query(ips)
-					if(response['threat_score']>10):
+					if(response['threat_score']>self.maximumAllowedThreatScore):
 						print(f'{ips} THREAT DETECTED WITH {0}',response['threat_score'])
 						if ips in self.threatList:
 							continue
 						self.threatList.add(ips)
-						self.sringIP=str(ips)
-						self.threatList.add(ips)
-						self.paraM={"client-id":"admin","client-token":"pfsense","type": "block","interface": "wan","ipprotocol":"inet","protocol":"tcp/udp","src":"","srcport":"any","dst":"","dstport": "any","descr": "Automated api rule test"}
-						self.paraM['src']=ips
+						#self.sringIP=str(ips)
+						#self.threatList.add(ips)
+
+						#need to create way to modify the rule
+
+						self.paraM={"client-id":"","client-token":"pfsense","type": "","interface": "","ipprotocol":"inet","protocol":"tcp/udp","src":"","srcport":"any","dst":"","dstport": "any","descr": "Automated api rule test"}
+						
+						self.paraM['client-id']=self.client_ID
+						self.paraM['client-token']=self.clien_Token
+						self.paraM['type']=self.rule_Type
 						self.paraM['dst']=ips
+						self.paraM['src']=ips
+						self.paraM['interface']=self.rule_Interface
 						self.data=json.dumps(self.paraM)
-						response=requests.post(self.link,verify=self.pemCert,data=self.data,headers=self.headers)
-						print(f'{response} \n')
-						print(f'{response.content} \n')
 						
 
+						try:
+							response=requests.post(self.ruleCreationlink,verify=self.pemCert,data=self.data,headers=self.headers)
+							#if(response.status_code==200):
+							print(f'API Call Succeeded Firewall Rule Has Been Created')
+							print(f'{response} \n')
+							print(f'{response.content} \n')
+							#if(response.status_code==500):
+								#print(f'{response.status_code} (Server error) : The API endpoint encountered an unexpected error processing your API request')
+						
+						except requests.exceptions.RequestException as e:
+							print(f"{self.unableToReachMSG}")
+							continue
+						except requests.exceptions.Timeout as e:
+							print(f"{self.continueTimeOutMSG}")
+							continue
+						except requests.exceptions.TooManyRedirects:
+							print(f"{self.tooManyRedirectsMSG}")
+							continue
+						except requests.exceptions.RequestException as e:
+							print(f"{self.requestLibraryErrorMSG}")
+							continue
+						except Exception as e:
+							raise
+						else:
+							pass
+						finally:
+							pass
 					self.checkedIPset.add(ips)
 					#if((len(self.srcdstList))<=2):
 
@@ -96,7 +212,7 @@ class IP:
 						#print("MONITORING ACTIVEcl")
 						#self.srcdstList.pop()
 			except Exception as e:
-				print(e)
+				raise
 			except RuntimeError:
 				print("MONITORING ACTIVE")
 			else:
@@ -170,10 +286,15 @@ class TrafficCapture:
 			ipList=IP()
 			sourceIPset=set()
 			destinationIPset=set()
+			print(f'Checking Host:{ipList.hostName} status')
+			firewallStatusCheck=threading.Timer(1,ipList.HostStatusCheck)
+			firewallStatusCheck.start()
+			#dir(capture.my_layer)#'IP' in capture
 			while  _stopCapture_:
+				if(ipList.isFirewallUP==False):
+					print(f'{ipList.unableToReachMSG}')
 				for packets in capture.sniff_continuously():
-					#dir(capture.my_layer)
-					if ('IP' in packets):#'IP' in capture
+					if ('IP' in packets):
 						#sourceIPset.add(packets['IP'].src)
 						#destinationIPset.add(packets['IP'].dst)
 						addSrcIPList=threading.Thread(target=ipList.SourceIPs(packets['IP'].src))
@@ -184,15 +305,17 @@ class TrafficCapture:
 						addDstIPList.start()
 						addDstIPList.join()
 						#print(ipList.getSourceIPs())
+
 						
 						IPblacklistThread=threading.Thread(target=ipList.checkBlackListStatus)
 						IPblacklistThread.start()
 						IPblacklistThread.join()
+						#ipList.getDestinationIPs()
+						
+						#print(ipList.getSourceIPs())
 						#print(ipList.getSourceIPs(),ipList.getDestinationIPs())
-					else:
-						continue
-					#print(packets['IP'].src,packets['IP'].dst)
-					#print(packets['IP'].src,packets['IP'].dst)
+						#print(packets['IP'].src,packets['IP'].dst)
+						#print(packets['IP'].src,packets['IP'].dst)
 					#for x in packets:
 						#print(x)
 					#with open("tempNetTraffic.json","w") as netTraffic:
