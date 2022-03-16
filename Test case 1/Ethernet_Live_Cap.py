@@ -1,5 +1,5 @@
 import pyshark, httpbl, json, threading #threading non-functional 
-import collections, gc
+import collections, gc ,re
 from json import JSONEncoder
 from get_nic import getnic 
 import time
@@ -19,6 +19,7 @@ class IP:
 		self.Mutex_lock=threading.Lock()
 		self.threatList=set()
 		self.dequeLenth=None
+		self.skipIPlist=['162.159.200.1',"162.159.200.123"]
 
 		self.monitoringOnly=False
 		self.networkMonitoringEnable=None
@@ -113,7 +114,7 @@ class IP:
 				continue
 			else:
 				self.Mutex_lock.acquire()
-				self.srcdstList.append(" ".join(itmes.split()))
+				self.srcdstList.append(itmes)
 				self.Mutex_lock.release()
 
 		#self.srcdstList=self.srcIPList.copy()
@@ -129,7 +130,7 @@ class IP:
 				continue
 			else:
 				self.Mutex_lock.acquire()
-				self.srcdstList.append(" ".join(itmes.split()))
+				self.srcdstList.append(itmes)
 				self.Mutex_lock.release()
 		#self.srcdstLis=self.dstIPList.copy()
 
@@ -158,27 +159,15 @@ class IP:
 		#Loop through Source and destination IPs
 		for ips in self.srcdstList: 
 			try:
-				if (self.getSrcDstQueueLen()<=0):
-					continue
-				if (ips==None):
-					print(f"{ips} None IP DETECTED")
-					continue
-				if(ips==""):
-					print(f"{ips} No space quotes DETECTED")
-					continue
-				if(ips==" "):
-					print(f"{ips} quotes with space DETECTED")
-					continue
-				if not self.srcdstList:
-					continue
-				if (ips in self.checkedIPset):
-					#print(f'{ips} has already cheked against the HttpBL')
-					continue
-				if (ips == '162.159.200.1'):
+				if(ips in self.threatList):
 					continue
 				else:
-					print(f"{ips} this is else print")
+					#HttpBLChkThread=Threading(target=)
+					
 					response = bl.query(ips)
+					print(response['threat_score'],ips)
+					if (response['threat_score']==None):
+						continue
 					if(response['threat_score']>self.maximumAllowedThreatScore):
 						print(f'{ips} THREAT DETECTED WITH {0}',response['threat_score'])
 						if ips in self.threatList:
