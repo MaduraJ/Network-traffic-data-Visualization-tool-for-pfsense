@@ -18,6 +18,7 @@ class IP:
 
 		self.Mutex_lock=threading.Lock()
 		self.threatList=set()
+		self.dequeLenth=None
 
 		self.monitoringOnly=False
 		self.networkMonitoringEnable=None
@@ -41,6 +42,10 @@ class IP:
 		self.continueTimeOutMSG='Connection Timeout: Check if the Network, Firewall is UP and Running'
 		self.tooManyRedirectsMSG='Too Many Redirects: Bad URL'
 		self.requestLibraryErrorMSG='Request Library Error'
+		self.firewallWorkingMsg=f'(OK): {self.hostName} is UP and Running'
+		self.okResponseMSG200="is UP network monitoring has started"
+		self.badRequestMSG400="(Bad Request) : An error was found within your requested parameters"
+		self.unauthorizedMSG401="(Unauthorized) : API client has not completed authentication or authorization successfully "
 
 
 	def HostStatusCheck(self):
@@ -53,15 +58,15 @@ class IP:
 			firewallStatus=requests.get(statusCheckURL,verify=self.pemCert,data=self.statusAuthdata)
 			if (firewallStatus.status_code==200):
 				self.isFirewallUP=True
-				print(f'(OK) :{self.hostName} is UP network monitoring has started')
+				print(f'(OK) :{self.hostName} {self.okResponseMSG200}')
 				#return self.isFirewallUP
 			elif(firewallStatus.status_code==400):
 				self.isFirewallUP=False
-				print(f'{self.hostName} (Bad Request) : An error was found within your requested parameters ')
+				print(f'{self.hostName} {self.badRequestMSG400}')
 				return self.isFirewallUP
 			elif(firewallStatus.status_code==401):
 				self.isFirewallUP=False
-				print(f'{self.hostName} (Unauthorized) : API client has not completed authentication or authorization successfully ')
+				print(f'{self.hostName} {self.unauthorizedMSG401}')
 				return self.isFirewallUP
 			elif(firewallStatus.status_code==403):
 				self.isFirewallUP=False
@@ -108,7 +113,7 @@ class IP:
 				continue
 			else:
 				self.Mutex_lock.acquire()
-				self.srcdstList.append(itmes)
+				self.srcdstList.append(" ".join(itmes.split()))
 				self.Mutex_lock.release()
 
 		#self.srcdstList=self.srcIPList.copy()
@@ -124,7 +129,7 @@ class IP:
 				continue
 			else:
 				self.Mutex_lock.acquire()
-				self.srcdstList.append(itmes)
+				self.srcdstList.append(" ".join(itmes.split()))
 				self.Mutex_lock.release()
 		#self.srcdstLis=self.dstIPList.copy()
 
@@ -140,6 +145,10 @@ class IP:
 			#print(x)
 		return self.dstIPList
 
+	def getSrcDstQueueLen(self):
+		self.dequeLenth=len(self.srcdstList)
+		return self.dequeLenth
+
 	def checkBlackListStatus(self):
 		#print(self.srcdstList)
 		bl = httpbl.HttpBL(self.httpBLKey)
@@ -149,12 +158,26 @@ class IP:
 		#Loop through Source and destination IPs
 		for ips in self.srcdstList: 
 			try:
+				if (self.getSrcDstQueueLen()<=0):
+					continue
+				if (ips==None):
+					print(f"{ips} None IP DETECTED")
+					continue
+				if(ips==""):
+					print(f"{ips} No space quotes DETECTED")
+					continue
+				if(ips==" "):
+					print(f"{ips} quotes with space DETECTED")
+					continue
 				if not self.srcdstList:
 					continue
 				if (ips in self.checkedIPset):
 					#print(f'{ips} has already cheked against the HttpBL')
 					continue
+				if (ips == '162.159.200.1'):
+					continue
 				else:
+					print(f"{ips} this is else print")
 					response = bl.query(ips)
 					if(response['threat_score']>self.maximumAllowedThreatScore):
 						print(f'{ips} THREAT DETECTED WITH {0}',response['threat_score'])
@@ -185,7 +208,9 @@ class IP:
 							print(f'{response.content} \n')
 							#if(response.status_code==500):
 								#print(f'{response.status_code} (Server error) : The API endpoint encountered an unexpected error processing your API request')
-						
+						except IndexError:
+							print(self.srcdstList[-1:-5])
+							exit()
 						except requests.exceptions.RequestException as e:
 							print(f"{self.unableToReachMSG}")
 							continue
@@ -286,13 +311,19 @@ class TrafficCapture:
 			ipList=IP()
 			sourceIPset=set()
 			destinationIPset=set()
-			print(f'Checking Host:{ipList.hostName} status')
-			firewallStatusCheck=threading.Timer(1,ipList.HostStatusCheck)
-			firewallStatusCheck.start()
+			
+			
+			
 			#dir(capture.my_layer)#'IP' in capture
 			while  _stopCapture_:
-				if(ipList.isFirewallUP==False):
-					print(f'{ipList.unableToReachMSG}')
+				print(f'Checking Host:{ipList.hostName} status')
+				firewallStatusCheck=threading.Timer(10,ipList.HostStatusCheck)
+				firewallStatusCheck.start()
+				firewallStatusCheck.join()
+				if(ipList.isFirewallUP):
+					print(f'{ipList.hostName} {ipList.okResponseMSG200}')
+				else:
+					continue
 				for packets in capture.sniff_continuously():
 					if ('IP' in packets):
 						#sourceIPset.add(packets['IP'].src)
