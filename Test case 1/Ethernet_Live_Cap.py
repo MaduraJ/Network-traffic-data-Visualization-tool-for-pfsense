@@ -45,9 +45,57 @@ class IP:
 		self.requestLibraryErrorMSG='Request Library Error'
 		self.firewallWorkingMsg=f'(OK): {self.hostName} is UP and Running'
 		self.okResponseMSG200="is UP network monitoring has started"
+		self.firewallRuleCreatedMSG="(OK) API Call Succeeded Firewall Rule Has Been Created"
 		self.badRequestMSG400="(Bad Request) : An error was found within your requested parameters"
 		self.unauthorizedMSG401="(Unauthorized) : API client has not completed authentication or authorization successfully "
+		self.forbiddenMSG403="(Forbidden) : The API endpoint has refused your call. Commonly due to your access settings found in System > API"
+		self.notFoundMSG404="(Not found) : Either the API endpoint or requested data was not found"
+		self.serverErrorMSG500="(Server error) : The API endpoint encountered an unexpected error processing your API request"
+		self.generalErrorMSG="(ERROR) : Contact admin"
 
+
+
+	def firewallStatusCheckMsg(self,StatusCode):
+		self.firewallStatus=StatusCode
+		if (self.firewallStatus==200):
+			self.isFirewallUP=True
+			print(f'(OK) :{self.hostName} {self.okResponseMSG200}')
+		elif(self.firewallStatus==400):
+			self.isFirewallUP=False
+			print(f'{self.hostName} {self.badRequestMSG400}')
+		elif(self.firewallStatus==401):
+			self.isFirewallUP=False
+			print(f'{self.hostName} {self.unauthorizedMSG401}')
+		elif(self.firewallStatus==403):
+			self.isFirewallUP=False
+			print(f'{self.hostName} {self.forbiddenMSG403}')
+		elif(self.firewallStatus==404):
+			self.isFirewallUP=False
+			print(f'{self.hostName} {self.notFoundMSG404}')
+		elif(self.firewallStatus==500):
+			self.isFirewallUP=False
+			print(f'{self.hostName} {self.serverErrorMSG500}')
+		else:
+			self.isFirewallUP=False
+			print(f'Unreachable : {self.hostName} | Status check fail {self.generalErrorMSG}')
+
+	def firewallRuleCreationMsg(self,StatusCode,response_content):
+		RuleCreationStatusCode=StatusCode
+		responseContent=response_content
+		if (RuleCreationStatusCode==200):
+			print(f'{self.hostName} (OK) : {self.firewallRuleCreatedMSG}\n {responseContent}')
+		elif(self.RuleCreationStatusCode==400):
+			print(f'{self.hostName} {self.badRequestMSG400}')
+		elif(self.RuleCreationStatusCode==401):
+			print(f'{self.hostName} {self.unauthorizedMSG401}')
+		elif(self.RuleCreationStatusCode==403):
+			print(f'{self.hostName} {self.forbiddenMSG403}')
+		elif(self.RuleCreationStatusCode==404):
+			print(f'{self.hostName} {self.notFoundMSG404}')
+		elif(self.RuleCreationStatusCode==500):
+			print(f'{self.hostName} {self.serverErrorMSG500}')
+		else:
+			print(f'Unreachable : {self.hostName} | Firewall Rule Creation Fail {self.generalErrorMSG}')
 
 	def HostStatusCheck(self):
 		statusCheckURL=f"https://{self.hostName}/api/v1/firewall/states"
@@ -57,35 +105,9 @@ class IP:
 		self.statusAuthdata=json.dumps(statesAuth)
 		try:
 			firewallStatus=requests.get(statusCheckURL,verify=self.pemCert,data=self.statusAuthdata)
-			if (firewallStatus.status_code==200):
-				self.isFirewallUP=True
-				print(f'(OK) :{self.hostName} {self.okResponseMSG200}')
-				#return self.isFirewallUP
-			elif(firewallStatus.status_code==400):
-				self.isFirewallUP=False
-				print(f'{self.hostName} {self.badRequestMSG400}')
-				return self.isFirewallUP
-			elif(firewallStatus.status_code==401):
-				self.isFirewallUP=False
-				print(f'{self.hostName} {self.unauthorizedMSG401}')
-				return self.isFirewallUP
-			elif(firewallStatus.status_code==403):
-				self.isFirewallUP=False
-				print(f'{self.hostName}  (Forbidden) : The API endpoint has refused your call. Commonly due to your access settings found in System > API ')
-				return self.isFirewallUP
-			elif(firewallStatus.status_code==404):
-				self.isFirewallUP=False
-				print(f'{self.hostName} (Not found) : Either the API endpoint or requested data was not found ')
-				return self.isFirewallUP
-			elif(firewallStatus.status_code==500):
-				self.isFirewallUP=False
-				print(f'{self.hostName} (Server error) : The API endpoint encountered an unexpected error processing your API request ')
-				return self.isFirewallUP
-			else:
-				self.isFirewallUP=False
-				print(f'{self.hostName} (ERROR) : Contact admin ')
-				return self.isFirewallUP
-
+			StatusCodeCheck=threading.Thread(target=self.firewallStatusCheckMsg,args=(firewallStatus.status_code,))
+			StatusCodeCheck.start()
+			StatusCodeCheck.join()
 		except requests.exceptions.RequestException as e:
 			print(f"{self.unableToReachMSG}")
 		except requests.exceptions.Timeout as e:
@@ -100,8 +122,8 @@ class IP:
 			pass
 		finally:
 			pass
-		
 
+	
 
 	def SourceIPs(self,srcIP):
 		self.srcIPList.add(srcIP)
@@ -191,12 +213,9 @@ class IP:
 
 						try:
 							response=requests.post(self.ruleCreationlink,verify=self.pemCert,data=self.data,headers=self.headers)
-							#if(response.status_code==200):
-							print(f'API Call Succeeded Firewall Rule Has Been Created')
-							print(f'{response} \n')
-							print(f'{response.content} \n')
-							#if(response.status_code==500):
-								#print(f'{response.status_code} (Server error) : The API endpoint encountered an unexpected error processing your API request')
+							RuleCreationStatusCodeThread=threading.Thread(target=self.firewallRuleCreationMsg,args=(response.status_code,response.content,))
+							RuleCreationStatusCodeThread.start()
+							RuleCreationStatusCodeThread.join()
 						except IndexError:
 							print(self.srcdstList[-1:-5])
 							exit()
@@ -317,11 +336,11 @@ class TrafficCapture:
 					if ('IP' in packets):
 						#sourceIPset.add(packets['IP'].src)
 						#destinationIPset.add(packets['IP'].dst)
-						addSrcIPList=threading.Thread(target=ipList.SourceIPs(packets['IP'].src))
+						addSrcIPList=threading.Thread(target=ipList.SourceIPs, args=(packets['IP'].src,))
 						addSrcIPList.start()
 						addSrcIPList.join()
 						
-						addDstIPList=threading.Thread(target=ipList.DestinationIPs(packets['IP'].dst))
+						addDstIPList=threading.Thread(target=ipList.DestinationIPs, args=(packets['IP'].dst,))
 						addDstIPList.start()
 						addDstIPList.join()
 						#print(ipList.getSourceIPs())
