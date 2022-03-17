@@ -1,0 +1,7 @@
+bigdatacloudapi_client==1.0.1
+get_nic==0.0.3
+httpbl==1.0.1
+pcapng==0.1.25
+pyshark==0.4.3
+python_pcapng==1.0
+requests==2.26.0
