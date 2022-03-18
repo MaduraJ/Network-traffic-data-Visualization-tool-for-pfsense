@@ -52,6 +52,7 @@ class IP:
 		self.notFoundMSG404="(Not found) : Either the API endpoint or requested data was not found"
 		self.serverErrorMSG500="(Server error) : The API endpoint encountered an unexpected error processing your API request"
 		self.generalErrorMSG="(ERROR) : Contact admin"
+		self.tlsErrorMSG="(TLS Error) : Could not find a suitable TLS CA certificate bundle"
 
 
 
@@ -108,6 +109,9 @@ class IP:
 			StatusCodeCheck=threading.Thread(target=self.firewallStatusCheckMsg,args=(firewallStatus.status_code,))
 			StatusCodeCheck.start()
 			StatusCodeCheck.join()
+
+		except OSError:
+			print(f"{self.tlsErrorMSG}")
 		except requests.exceptions.RequestException as e:
 			print(f"{self.unableToReachMSG}")
 		except requests.exceptions.Timeout as e:
@@ -160,8 +164,8 @@ class IP:
 		#for x in self.srcdstList:
 			#print(x)
 		#print(len(self.srcIPList))
-		return self.srcdstList
-		#return self.dstIPList
+		#return self.srcdstList
+		print(self.srcdstList)
 
 	def getDestinationIPs(self):
 		#for x in self.dstIPList:
@@ -216,6 +220,8 @@ class IP:
 							RuleCreationStatusCodeThread=threading.Thread(target=self.firewallRuleCreationMsg,args=(response.status_code,response.content,))
 							RuleCreationStatusCodeThread.start()
 							RuleCreationStatusCodeThread.join()
+						except OSError:
+							print(f"{self.tlsErrorMSG}")
 						except IndexError:
 							print(self.srcdstList[-1:-5])
 							exit()
@@ -345,7 +351,10 @@ class TrafficCapture:
 						addDstIPList.join()
 						#print(ipList.getSourceIPs())
 
+						#getAllAddresses=threading.Thread(ipList.getSourceIPs)
+						#getAllAddresses.start()
 						
+
 						IPblacklistThread=threading.Thread(target=ipList.checkBlackListStatus)
 						IPblacklistThread.start()
 						IPblacklistThread.join()
