@@ -19,11 +19,13 @@ try:
 	#print(data3)
 	#print(response.url)
 	#print(response)
-	dataobj=json.loads(response.content)
-	dataobj['code']=404
-	print(dataobj)
-	#print()
-	print(type(dataobj))
+	ConvertedToPytohnDictionary=json.loads(response.content)
+	ConvertedToPytohnDictionary['code']=404
+	#print(dataobj)
+	#print(type(dataobj))
+	ConvertedToJsonString=json.dumps(ConvertedToPytohnDictionary,indent=4)
+	print(ConvertedToJsonString)
+	print(type(ConvertedToJsonString))
 except Exception as e:
 	print(e)
 else:
