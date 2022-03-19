@@ -21,11 +21,17 @@ try:
 	#print(response)
 	ConvertedToPytohnDictionary=json.loads(response.content)
 	ConvertedToPytohnDictionary['code']=404
+	print(type(ConvertedToPytohnDictionary['data']),"Python data Dictionary")
+	print(ConvertedToPytohnDictionary['data']['type'])
+	print(ConvertedToPytohnDictionary['data']['source']['address'])
+	#print(ConvertedToPytohnDictionary['descr'])
+	#print(ConvertedToPytohnDictionary['tracker'])
+
 	#print(dataobj)
-	#print(type(dataobj))
+	print(type(ConvertedToPytohnDictionary), "Dictionary")
 	ConvertedToJsonString=json.dumps(ConvertedToPytohnDictionary,indent=4)
 	print(ConvertedToJsonString)
-	print(type(ConvertedToJsonString))
+	#print(type(ConvertedToJsonString))
 except Exception as e:
 	print(e)
 else:

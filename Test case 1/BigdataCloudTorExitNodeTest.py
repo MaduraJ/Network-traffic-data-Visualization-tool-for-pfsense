@@ -1,6 +1,8 @@
 import requests
-apiKey = '0fb0868823be4b3c9f4a7632d1a3eb0f'
-batchSize="100"
+import json
+import datetime
+apiKey = ''
+batchSize="500"
 offset="0"
 sort="ip"
 order="asc"
@@ -14,7 +16,17 @@ def getTorExitNodes():
 	try:
 		response=requests.get(link,headers=headers)
 		print(response.url)
-		print(response.content)
+		dictResponse=json.loads(response.content)
+		jsonString=json.dumps(dictResponse,indent=3)
+		print(jsonString)
+		cDateTime=datetime.datetime.now()
+		#print(type(dictResponse))
+		print(dictResponse["nodes"][0]["ip"])
+		strCData=str(cDateTime)
+		fStrCdata=strCData.replace(":",".")
+		#out_file=open(f"{fStrCdata}.json","w")
+		#json.dump(dictResponse,out_file,indent=3)
+		#out_file.close()
 	except Exception as e:
 		raise
 	else:
