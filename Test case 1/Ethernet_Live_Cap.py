@@ -5,9 +5,17 @@ from get_nic import getnic
 import time
 import requests
 import bigdatacloudapi
+import datetime
 
 
-class IP:
+global __stopCapture__
+__stopCapture__=True
+global __StartLogging__
+__StartLogging__=False
+
+
+		
+class Firewall:
 	""" """
 	def __init__(self):
 		self.srcIPList=set()
@@ -15,12 +23,23 @@ class IP:
 		#self.srcdstList=set()
 		self.checkedIPset=set()
 		self.srcdstList = collections.deque()
-
 		self.Mutex_lock=threading.Lock()
+		
 		self.threatList=set()
+		self.twoTimeRepeat=set()
+		self.threeTimeRepeat=set()
+
+		self.ruleTrackerId=set()
+		self.ruleCreationResponseToDict=[]
+		self.fwRcRConvertedToPytohnDictionary=None#Firewall Rule Creation Response content in dictionary format
+		self.firewallRuleCrInResponseJsonSringFormat=None
+		self.logHttpblResponse=None
+		self.httpblResponse=None
+		self.firewallRuleCreationResponse=None
+		
+
 		self.dequeLenth=None
 		self.skipIPlist=['162.159.200.1',"162.159.200.123"]
-
 		self.monitoringOnly=False
 		self.networkMonitoringEnable=None
 		self.TorExitBlockEnable=None
@@ -45,7 +64,7 @@ class IP:
 		self.requestLibraryErrorMSG='Request Library Error'
 		self.firewallWorkingMsg=f'(OK): {self.hostName} is UP and Running'
 		self.okResponseMSG200="is UP network monitoring has started"
-		self.firewallRuleCreatedMSG="(OK) API Call Succeeded Firewall Rule Has Been Created"
+		self.firewallRuleCreatedMSG="API Call (OK): Succeeded Firewall Rule Has Been Created"
 		self.badRequestMSG400="(Bad Request) : An error was found within your requested parameters"
 		self.unauthorizedMSG401="(Unauthorized) : API client has not completed authentication or authorization successfully "
 		self.forbiddenMSG403="(Forbidden) : The API endpoint has refused your call. Commonly due to your access settings found in System > API"
@@ -54,9 +73,37 @@ class IP:
 		self.generalErrorMSG="(ERROR) : Contact admin"
 		self.tlsErrorMSG="(TLS Error) : Could not find a suitable TLS CA certificate bundle"
 
+	def HostStatusCheck(self):
+		statusCheckURL=f"https://{self.hostName}/api/v1/firewall/states"
+		statesAuth={"client-id": "", "client-token": ""}
+		statesAuth["client-id"]=self.client_ID
+		statesAuth["client-token"]=self.clien_Token
+		self.statusAuthdata=json.dumps(statesAuth)
+		try:
+			firewallStatus=requests.get(statusCheckURL,verify=self.pemCert,data=self.statusAuthdata)
+			StatusCodeCheck=threading.Thread(target=self.FirewallStatusCheckMsg,args=(firewallStatus.status_code,))
+			StatusCodeCheck.start()
+			StatusCodeCheck.join()
 
+		
+		except requests.exceptions.RequestException as e:
+			print(f"{self.unableToReachMSG}")
+		except requests.exceptions.Timeout as e:
+			print(f"{self.continueTimeOutMSG}")
+		except requests.exceptions.TooManyRedirects:
+			print(f"{self.tooManyRedirectsMSG}")
+		except requests.exceptions.RequestException as e:
+			print(f"{self.requestLibraryErrorMSG}")
+		except Exception as e:
+			raise
+		except OSError:
+			print(f"{self.tlsErrorMSG}")
+		else:
+			pass
+		finally:
+			pass
 
-	def firewallStatusCheckMsg(self,StatusCode):
+	def FirewallStatusCheckMsg(self,StatusCode):
 		self.firewallStatus=StatusCode
 		if (self.firewallStatus==200):
 			self.isFirewallUP=True
@@ -80,46 +127,23 @@ class IP:
 			self.isFirewallUP=False
 			print(f'Unreachable : {self.hostName} | Status check fail {self.generalErrorMSG}')
 
-	def firewallRuleCreationMsg(self,StatusCode,response_content):
+	def FirewallRuleCreationMsg(self,StatusCode,response_content):
 		RuleCreationStatusCode=StatusCode
-		responseContent=response_content
-		if (RuleCreationStatusCode==200):
-			print(f'{self.hostName} (OK) : {self.firewallRuleCreatedMSG}\n {responseContent}')
-		elif(self.RuleCreationStatusCode==400):
-			print(f'{self.hostName} {self.badRequestMSG400}')
-		elif(self.RuleCreationStatusCode==401):
-			print(f'{self.hostName} {self.unauthorizedMSG401}')
-		elif(self.RuleCreationStatusCode==403):
-			print(f'{self.hostName} {self.forbiddenMSG403}')
-		elif(self.RuleCreationStatusCode==404):
-			print(f'{self.hostName} {self.notFoundMSG404}')
-		elif(self.RuleCreationStatusCode==500):
-			print(f'{self.hostName} {self.serverErrorMSG500}')
-		else:
-			print(f'Unreachable : {self.hostName} | Firewall Rule Creation Fail {self.generalErrorMSG}')
-
-	def HostStatusCheck(self):
-		statusCheckURL=f"https://{self.hostName}/api/v1/firewall/states"
-		statesAuth={"client-id": "", "client-token": ""}
-		statesAuth["client-id"]=self.client_ID
-		statesAuth["client-token"]=self.clien_Token
-		self.statusAuthdata=json.dumps(statesAuth)
 		try:
-			firewallStatus=requests.get(statusCheckURL,verify=self.pemCert,data=self.statusAuthdata)
-			StatusCodeCheck=threading.Thread(target=self.firewallStatusCheckMsg,args=(firewallStatus.status_code,))
-			StatusCodeCheck.start()
-			StatusCodeCheck.join()
-
-		except OSError:
-			print(f"{self.tlsErrorMSG}")
-		except requests.exceptions.RequestException as e:
-			print(f"{self.unableToReachMSG}")
-		except requests.exceptions.Timeout as e:
-			print(f"{self.continueTimeOutMSG}")
-		except requests.exceptions.TooManyRedirects:
-			print(f"{self.tooManyRedirectsMSG}")
-		except requests.exceptions.RequestException as e:
-			print(f"{self.requestLibraryErrorMSG}")
+			if (RuleCreationStatusCode==200):
+				print(f'{self.hostName} (OK) : {self.firewallRuleCreatedMSG}\n\n\n{self.firewallRuleCrInResponseJsonSringFormat}\n\n\n')
+			elif(self.RuleCreationStatusCode==400):
+				print(f'{self.hostName} {self.badRequestMSG400}\n{self.firewallRuleCrInResponseJsonSringFormat}')
+			elif(self.RuleCreationStatusCode==401):
+				print(f'{self.hostName} {self.unauthorizedMSG401}\n{self.firewallRuleCrInResponseJsonSringFormat}')
+			elif(self.RuleCreationStatusCode==403):
+				print(f'{self.hostName} {self.forbiddenMSG403}\n{self.firewallRuleCrInResponseJsonSringFormat}')
+			elif(self.RuleCreationStatusCode==404):
+				print(f'{self.hostName} {self.notFoundMSG404}\n{self.firewallRuleCrInResponseJsonSringFormat}')
+			elif(self.RuleCreationStatusCode==500):
+				print(f'{self.hostName} {self.serverErrorMSG500}\n{self.firewallRuleCrInResponseJsonSringFormat}')
+			else:
+				print(f'Unreachable : {self.hostName} | Firewall Rule Creation Fail {self.generalErrorMSG}\n{self.firewallRuleCrInResponseJsonSringFormat}')
 		except Exception as e:
 			raise
 		else:
@@ -127,7 +151,47 @@ class IP:
 		finally:
 			pass
 
-	
+
+
+	def fillJsonStrDict(self,response_content):
+		try:
+			if not response_content:
+				pass
+			else:
+				self.fwRcRConvertedToPytohnDictionary=json.loads(response_content)
+				#print(type(self.fwRcRConvertedToPytohnDictionary))
+				self.firewallRuleCrInResponseJsonSringFormat=json.dumps(self.fwRcRConvertedToPytohnDictionary,indent=4)
+		except Exception as e:
+			raise
+		else:
+			pass
+		finally:
+			pass
+		
+
+	def LogRule(self,response_content,httpbl_response):
+		cTime=str(datetime.datetime.now())
+		formatedCTime=cTime.replace(":",".")	
+		self.logHttpblResponse=httpbl_response
+		self.fwRcRConvertedToPytohnDictionary=json.loads(response_content)
+		try:
+			out_file=open(f"Firewall_Rule_{formatedCTime}.json","w")
+			json.dump(self.fwRcRConvertedToPytohnDictionary,out_file,indent=4)
+			out_file.close()
+			print(f'\n\n\n {formatedCTime} Log Created \n\n\n')
+		except EOFError as e:
+			print(e)
+			out_file.close()
+		except Exception as e:
+			raise
+		else:
+			pass
+		finally:
+			pass
+		
+
+
+
 
 	def SourceIPs(self,srcIP):
 		self.srcIPList.add(srcIP)
@@ -190,15 +254,16 @@ class IP:
 				else:
 					#HttpBLChkThread=Threading(target=)
 					
-					response = bl.query(ips)
-					print(response['threat_score'],ips)
-					if (response['threat_score']==None):
+					self.httpblResponse = bl.query(ips)
+					print(self.httpblResponse['threat_score'],ips)
+					if (self.httpblResponse['threat_score']==None):
 						continue
-					if(response['threat_score']>self.maximumAllowedThreatScore):
-						print(f'{ips} THREAT DETECTED WITH {0}',response['threat_score'])
+					if(self.httpblResponse['threat_score']>self.maximumAllowedThreatScore):
+						print(f'\n\n\nTHREAT DETECTED: {ips} WITH THREAT SCORE OF',self.httpblResponse ['threat_score'],"\n\n\n")
 						if ips in self.threatList:
 							continue
-						self.threatList.add(ips)
+						else:
+							self.threatList.add(ips)
 						#self.sringIP=str(ips)
 						#self.threatList.add(ips)
 
@@ -216,12 +281,20 @@ class IP:
 						
 
 						try:
-							response=requests.post(self.ruleCreationlink,verify=self.pemCert,data=self.data,headers=self.headers)
-							RuleCreationStatusCodeThread=threading.Thread(target=self.firewallRuleCreationMsg,args=(response.status_code,response.content,))
+							self.firewallRuleCreationResponse=requests.post(self.ruleCreationlink,verify=self.pemCert,data=self.data,headers=self.headers)
+
+							fillJsonStrDictThread=threading.Thread(target=self.fillJsonStrDict, args=(self.firewallRuleCreationResponse.content,))
+							fillJsonStrDictThread.start()
+							fillJsonStrDictThread.join()
+
+							RuleCreationStatusCodeThread=threading.Thread(target=self.FirewallRuleCreationMsg,args=(self.firewallRuleCreationResponse.status_code,self.firewallRuleCreationResponse.content,))
 							RuleCreationStatusCodeThread.start()
 							RuleCreationStatusCodeThread.join()
-						except OSError:
-							print(f"{self.tlsErrorMSG}")
+							LogRuleThread=threading.Thread(target=self.LogRule, args=(self.firewallRuleCreationResponse.content,self.httpblResponse,))
+							if __StartLogging__:
+								LogRuleThread.start()
+
+						
 						except IndexError:
 							print(self.srcdstList[-1:-5])
 							exit()
@@ -239,6 +312,8 @@ class IP:
 							continue
 						except Exception as e:
 							raise
+						except OSError:
+							print(f"{self.tlsErrorMSG}")
 						else:
 							pass
 						finally:
@@ -299,10 +374,8 @@ class TrafficCapture:
 		self.netInterface=self.sysInterface
 		return self.netInterface
 
-	global _stopCapture_
-	_stopCapture_=True
 	def __stopCapture(self):
-		_stopCapture_=False
+		__stopCapture__=False
 
 	def Capture(self):
 		"""
@@ -322,14 +395,14 @@ class TrafficCapture:
 			tcp=True
 			udp=True
 			tls=True
-			ipList=IP()
+			ipList=Firewall()
 			sourceIPset=set()
 			destinationIPset=set()
 			
 			
 			
 			#dir(capture.my_layer)#'IP' in capture
-			while  _stopCapture_:
+			while  __stopCapture__:
 				print(f'Checking Host:{ipList.hostName} status')
 				firewallStatusCheck=threading.Timer(10,ipList.HostStatusCheck)
 				firewallStatusCheck.start()
