@@ -5,7 +5,7 @@ from get_nic import getnic
 import time
 import requests
 import bigdatacloudapi
-import datetime
+import datetime ,smtplib
 
 
 global __stopCapture__
@@ -23,11 +23,14 @@ class Firewall:
 		#self.srcdstList=set()
 		self.checkedIPset=set()
 		self.srcdstList = collections.deque()
+
 		self.Mutex_lock=threading.Lock()
 		
 		self.threatList=set()
 		self.twoTimeRepeat=set()
 		self.threeTimeRepeat=set()
+		self.firstUblockTimer=None
+		self.secondUnblockTimer=None
 
 		self.ruleTrackerId=set()
 		self.ruleCreationResponseToDict=[]
@@ -35,23 +38,28 @@ class Firewall:
 		self.firewallRuleCrInResponseJsonSringFormat=None
 		self.logHttpblResponse=None
 		self.httpblResponse=None
+		self.strHttpblResponse=None
 		self.firewallRuleCreationResponse=None
-		
-
-		self.dequeLenth=None
-		self.skipIPlist=['162.159.200.1',"162.159.200.123"]
-		self.monitoringOnly=False
-		self.networkMonitoringEnable=None
-		self.TorExitBlockEnable=None
-		self.httpBlHeaders=None
-		self.isFirewallUP=False
 		self.httpBLKey='vwmjfxvftsrb'
 		self.pemCert='pfsense1.localdomain.pem'
 		self.maximumAllowedThreatScore=10
 		self.headers={'Content-Type': 'application/json'}
 		
-		
+		self.senderEmailAddress="pfsenseauomatedmail@gmail.com"
+		self.senderEmailPwd="XQdzFMdNQkD83iT"
+		self.receiverMail="piummadura@gmail.com"
+
+		self.dequeLenth=None
+		self.skipIPlist=['162.159.200.1',"162.159.200.123"]
+
 		self.hostName="192.168.1.100"
+		self.monitoringOnly=False
+		self.networkMonitoringEnable=None
+		self.TorExitBlockEnable=None
+		self.httpBlHeaders=None
+		self.isFirewallUP=False
+		
+		
 		self.client_ID='admin'
 		self.clien_Token='pfsense'
 		self.rule_Type='block'
@@ -151,15 +159,38 @@ class Firewall:
 		finally:
 			pass
 
+	def sendEmailNotification(self):
+		try:
+			if self.senderEmailAddress==None or self.senderEmailPwd==None or self.receiverMail==None:
+				print(f'Please proveide details to send notification')
+			else:
+				 smtpSession = smtplib.SMTP('smtp.gmail.com', 587)
+				 smtpSession.starttls()
+				 smtpSession.login(self.senderEmailAddress,self.senderEmailPwd)
+				 report=f"Firewall Rule details \n{self.firewallRuleCrInResponseJsonSringFormat}\n Threat details \n{self.strHttpblResponse}"
+				 smtpSession.sendmail(self.senderEmailAddress,self.receiverMail,report)
+				 smtpSession.quit()
+				 print("\n\nEmail Notification sent successfully!\n\n") 
+		except Exception as e:
+			smtpSession.quit()
+			raise
+		except smtplib.SMTPAuthenticationError as e:
+			print("SMTP Authentication Error : Secure Implementaion working progress")
+		else:
+			pass
+		finally:
+			pass
 
-
-	def fillJsonStrDict(self,response_content):
+	def fillJsonStrDict(self,response_content,httpbl_response):
+		blackListResponse=httpbl_response
 		try:
 			if not response_content:
 				pass
 			else:
 				self.fwRcRConvertedToPytohnDictionary=json.loads(response_content)
 				#print(type(self.fwRcRConvertedToPytohnDictionary))
+				self.strHttpblResponse=json.dumps(blackListResponse)
+				print(self.strHttpblResponse,type(self.strHttpblResponse))
 				self.firewallRuleCrInResponseJsonSringFormat=json.dumps(self.fwRcRConvertedToPytohnDictionary,indent=4)
 		except Exception as e:
 			raise
@@ -283,17 +314,20 @@ class Firewall:
 						try:
 							self.firewallRuleCreationResponse=requests.post(self.ruleCreationlink,verify=self.pemCert,data=self.data,headers=self.headers)
 
-							fillJsonStrDictThread=threading.Thread(target=self.fillJsonStrDict, args=(self.firewallRuleCreationResponse.content,))
+							fillJsonStrDictThread=threading.Thread(target=self.fillJsonStrDict, args=(self.firewallRuleCreationResponse.content,self.httpblResponse,))
 							fillJsonStrDictThread.start()
 							fillJsonStrDictThread.join()
 
-							RuleCreationStatusCodeThread=threading.Thread(target=self.FirewallRuleCreationMsg,args=(self.firewallRuleCreationResponse.status_code,self.firewallRuleCreationResponse.content,))
-							RuleCreationStatusCodeThread.start()
-							RuleCreationStatusCodeThread.join()
+							ruleCreationStatusCodeThread=threading.Thread(target=self.FirewallRuleCreationMsg,args=(self.firewallRuleCreationResponse.status_code,self.firewallRuleCreationResponse.content,))
+							ruleCreationStatusCodeThread.start()
+							ruleCreationStatusCodeThread.join()
 							LogRuleThread=threading.Thread(target=self.LogRule, args=(self.firewallRuleCreationResponse.content,self.httpblResponse,))
 							if __StartLogging__:
 								LogRuleThread.start()
-
+							
+							emailThread=threading.Thread(target=self.sendEmailNotification)
+							emailThread.start()
+							emailThread.join()
 						
 						except IndexError:
 							print(self.srcdstList[-1:-5])
