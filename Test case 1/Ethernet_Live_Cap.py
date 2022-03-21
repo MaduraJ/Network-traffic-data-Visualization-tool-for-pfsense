@@ -45,9 +45,9 @@ class Firewall:
 		self.maximumAllowedThreatScore=10
 		self.headers={'Content-Type': 'application/json'}
 		
-		self.senderEmailAddress="pfsenseauomatedmail@gmail.com"
-		self.senderEmailPwd="XQdzFMdNQkD83iT"
-		self.receiverMail="piummadura@gmail.com"
+		self.senderEmailAddress=None
+		self.senderEmailPwd=None
+		self.receiverMail=None
 
 		self.dequeLenth=None
 		self.skipIPlist=['162.159.200.1',"162.159.200.123"]
