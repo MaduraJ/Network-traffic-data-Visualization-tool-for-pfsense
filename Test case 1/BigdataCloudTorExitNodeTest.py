@@ -2,7 +2,7 @@ import requests
 import json
 import datetime
 apiKey = ''
-batchSize="500"
+batchSize="10"
 offset="0"
 sort="ip"
 order="asc"
@@ -15,13 +15,15 @@ headers={'Content-Type': 'application/json'}
 def getTorExitNodes():
 	try:
 		response=requests.get(link,headers=headers)
-		print(response.url)
+		print(response.content)
 		dictResponse=json.loads(response.content)
 		jsonString=json.dumps(dictResponse,indent=3)
 		print(jsonString)
 		cDateTime=datetime.datetime.now()
-		#print(type(dictResponse))
-		print(dictResponse["nodes"][0]["ip"])
+		print(type(dictResponse))
+		print(dictResponse["nodes"][0]["ip"],type(dictResponse['nodes'][0]))
+		print(dictResponse["total"])
+		print(dictResponse['nodes'][0]['carriers'][0]['rank'],type(dictResponse['nodes'][0]['carriers'][0]))
 		strCData=str(cDateTime)
 		fStrCdata=strCData.replace(":",".")
 		#out_file=open(f"{fStrCdata}.json","w")
