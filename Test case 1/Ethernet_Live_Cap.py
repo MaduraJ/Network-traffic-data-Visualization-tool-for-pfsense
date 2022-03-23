@@ -8,8 +8,9 @@ import bigdatacloudapi
 import datetime ,smtplib
 
 
-global __stopCapture__
-__stopCapture__=True
+
+global __enableCapture__
+__enableCapture__=True
 global __StartLogging__
 __StartLogging__=False
 
@@ -23,6 +24,7 @@ class Firewall:
 		#self.srcdstList=set()
 		self.checkedIPset=set()
 		self.srcdstList = collections.deque()
+		self.blockedIPs={}
 
 		self.Mutex_lock=threading.Lock()
 		
@@ -40,14 +42,14 @@ class Firewall:
 		self.httpblResponse=None
 		self.strHttpblResponse=None
 		self.firewallRuleCreationResponse=None
-		self.httpBLKey='vwmjfxvftsrb'
+		self.httpBLKey=''
 		self.pemCert='pfsense1.localdomain.pem'
 		self.maximumAllowedThreatScore=10
 		self.headers={'Content-Type': 'application/json'}
 		
-		self.senderEmailAddress=None
-		self.senderEmailPwd=None
-		self.receiverMail=None
+		self.senderEmailAddress="pfsenseauomatedmail@gmail.com"
+		self.senderEmailPwd=""
+		self.receiverMail=""
 
 		self.dequeLenth=None
 		self.skipIPlist=['162.159.200.1',"162.159.200.123"]
@@ -66,15 +68,15 @@ class Firewall:
 		self.rule_Interface='wan'
 
 
-		self.unableToReachMSG='Unable to Reach Firewall Check if the Network, Firewall is UP and Running'
-		self.continueTimeOutMSG='Connection Timeout: Check if the Network, Firewall is UP and Running'
-		self.tooManyRedirectsMSG='Too Many Redirects: Bad URL'
-		self.requestLibraryErrorMSG='Request Library Error'
-		self.firewallWorkingMsg=f'(OK): {self.hostName} is UP and Running'
+		self.unableToReachMSG='\n\nUnable to Reach Firewall Check if the Network, Firewall is UP and Running\n\n'
+		self.continueTimeOutMSG='\n\nConnection Timeout: Check if the Network, Firewall is UP and Running\n\n'
+		self.tooManyRedirectsMSG='\n\nToo Many Redirects: Bad URL\n\n'
+		self.requestLibraryErrorMSG='\n\nRequest Library Error\n\n'
+		self.firewallWorkingMsg=f'\n\n(OK): {self.hostName} is UP and Running\n\n'
 		self.okResponseMSG200="is UP network monitoring has started"
-		self.firewallRuleCreatedMSG="API Call (OK): Succeeded Firewall Rule Has Been Created"
-		self.badRequestMSG400="(Bad Request) : An error was found within your requested parameters"
-		self.unauthorizedMSG401="(Unauthorized) : API client has not completed authentication or authorization successfully "
+		self.firewallRuleCreatedMSG="\n\nAPI Call (OK): Succeeded Firewall Rule Has Been Created\n\n"
+		self.badRequestMSG400="\n\n(Bad Request) : An error was found within your requested parameters\n\n"
+		self.unauthorizedMSG401="\n\n(Unauthorized) : API client has not completed authentication or authorization successfully\n\n"
 		self.forbiddenMSG403="(Forbidden) : The API endpoint has refused your call. Commonly due to your access settings found in System > API"
 		self.notFoundMSG404="(Not found) : Either the API endpoint or requested data was not found"
 		self.serverErrorMSG500="(Server error) : The API endpoint encountered an unexpected error processing your API request"
@@ -89,20 +91,29 @@ class Firewall:
 		self.statusAuthdata=json.dumps(statesAuth)
 		try:
 			firewallStatus=requests.get(statusCheckURL,verify=self.pemCert,data=self.statusAuthdata)
-			StatusCodeCheck=threading.Thread(target=self.FirewallStatusCheckMsg,args=(firewallStatus.status_code,))
+			firewallStatusDict=json.loads(firewallStatus.content)
+			StatusCodeCheck=threading.Thread(target=self.FirewallStatusCheckMsg,args=(firewallStatusDict['code'],))
 			StatusCodeCheck.start()
 			StatusCodeCheck.join()
-
-		
+			print(firewallStatusDict['code'])
+			firewallStatus=None
+		except TimeoutError:
+			self.isFirewallUP=False
+			print(f"\n\n{self.unableToReachMSG}\n\n")
 		except requests.exceptions.RequestException as e:
-			print(f"{self.unableToReachMSG}")
+			self.isFirewallUP=False
+			print(f"\n\n{self.unableToReachMSG}\n\n")
 		except requests.exceptions.Timeout as e:
-			print(f"{self.continueTimeOutMSG}")
+			self.isFirewallUP=False
+			print(f"\n\n{self.continueTimeOutMSG}\n\n")
 		except requests.exceptions.TooManyRedirects:
-			print(f"{self.tooManyRedirectsMSG}")
+			self.isFirewallUP=False
+			print(f"\n\n{self.tooManyRedirectsMSG}\n\n")
 		except requests.exceptions.RequestException as e:
-			print(f"{self.requestLibraryErrorMSG}")
+			self.isFirewallUP=False
+			print(f"\n\n{self.requestLibraryErrorMSG}\n\n")
 		except Exception as e:
+			self.isFirewallUP=False
 			raise
 		except OSError:
 			print(f"{self.tlsErrorMSG}")
@@ -163,19 +174,39 @@ class Firewall:
 		try:
 			if self.senderEmailAddress==None or self.senderEmailPwd==None or self.receiverMail==None:
 				print(f'Please proveide details to send notification')
+			if (self.isFirewallUP==False):
+				smtpSession = smtplib.SMTP('smtp.gmail.com', 587)
+				smtpSession.starttls()
+				smtpSession.login(self.senderEmailAddress,self.senderEmailPwd)
+				report=f"Subject:Unable to Reach Firewall\nThreat detected but Unable to create firewall rule\n Firewall Rule details \n{self.firewallRuleCrInResponseJsonSringFormat}\n Threat details \n{self.strHttpblResponse}"
+				smtpSession.sendmail(self.senderEmailAddress,self.receiverMail,report)
+				smtpSession.quit()
+				print("\n\nEmail Notification sent successfully!\n\n\n") 
 			else:
 				 smtpSession = smtplib.SMTP('smtp.gmail.com', 587)
 				 smtpSession.starttls()
 				 smtpSession.login(self.senderEmailAddress,self.senderEmailPwd)
-				 report=f"Firewall Rule details \n{self.firewallRuleCrInResponseJsonSringFormat}\n Threat details \n{self.strHttpblResponse}"
+				 report=f"Subject:Auomated Firewall Rule\nFirewall Rule details \n{self.firewallRuleCrInResponseJsonSringFormat}\n Threat details \n{self.strHttpblResponse}"
 				 smtpSession.sendmail(self.senderEmailAddress,self.receiverMail,report)
 				 smtpSession.quit()
 				 print("\n\nEmail Notification sent successfully!\n\n") 
+		except smtplib.SMTPServerDisconnected as e:
+			smtpSession.quit()
+			print("Server  unexpectedly disconnect")
+		except smtplib.SMTPResponseException as e:
+			print(f"SMTP server error | {smtpSession.smtp_code}\n{smtpSession.smtp_error}")
+		except smtplib.SMTPSenderRefused as e:
+			print("Sender address refused")
+		except smtplib.SMTPAuthenticationError as e:
+			smtpSession.quit()
+			print("SMTP Authentication Error : Please check Sender email and password\nSecure Implementaion working progress")
+		except smtplib.SMTPDataError as e:
+			print("The SMTP server refused to accept the message data")
+		except smtplib.SMTPConnectError as e:
+			print("Error occurred during establishment of a connection with the server")
 		except Exception as e:
 			smtpSession.quit()
 			raise
-		except smtplib.SMTPAuthenticationError as e:
-			print("SMTP Authentication Error : Secure Implementaion working progress")
 		else:
 			pass
 		finally:
@@ -328,22 +359,74 @@ class Firewall:
 							emailThread=threading.Thread(target=self.sendEmailNotification)
 							emailThread.start()
 							emailThread.join()
-						
+						except TimeoutError:
+							try:
+								possibleFirewallDown=threading.Thread(target=self.HostStatusCheck)
+								possibleFirewallDown.start()
+								possibleFirewallDown.join()
+								if(self.isFirewallUP==False):
+									firewallDownNotification=threading.Thread(target=self.sendEmailNotification)
+									firewallDownNotification.start()
+									firewallDownNotification.join()
+							except Exception as e:
+								raise
+							else:
+								pass
+							finally:
+								pass
 						except IndexError:
 							print(self.srcdstList[-1:-5])
 							exit()
-						except requests.exceptions.RequestException as e:
-							print(f"{self.unableToReachMSG}")
-							continue
 						except requests.exceptions.Timeout as e:
 							print(f"{self.continueTimeOutMSG}")
+							try:
+								possibleFirewallDown=threading.Thread(target=self.HostStatusCheck)
+								possibleFirewallDown.start()
+								possibleFirewallDown.join()
+								if(self.isFirewallUP==False):
+									firewallDownNotification=threading.Thread(target=self.sendEmailNotification)
+									firewallDownNotification.start()
+									firewallDownNotification.join()
+							except Exception as e:
+								raise
+							else:
+								pass
+							finally:
+								pass
 							continue
 						except requests.exceptions.TooManyRedirects:
 							print(f"{self.tooManyRedirectsMSG}")
+							try:
+								possibleFirewallDown=threading.Thread(target=self.HostStatusCheck)
+								possibleFirewallDown.start()
+								possibleFirewallDown.join()
+								if(self.isFirewallUP==False):
+									firewallDownNotification=threading.Thread(target=self.sendEmailNotification)
+									firewallDownNotification.start()
+									firewallDownNotification.join()
+							except Exception as e:
+								raise
+							else:
+								pass
+							finally:
+								pass
 							continue
 						except requests.exceptions.RequestException as e:
 							print(f"{self.requestLibraryErrorMSG}")
-							continue
+							try:
+								possibleFirewallDown=threading.Thread(target=self.HostStatusCheck)
+								possibleFirewallDown.start()
+								possibleFirewallDown.join()
+								if(self.isFirewallUP==False):
+									firewallDownNotification=threading.Thread(target=self.sendEmailNotification)
+									firewallDownNotification.start()
+									firewallDownNotification.join()
+							except Exception as e:
+								raise
+							else:
+								pass
+							finally:
+								pass
 						except Exception as e:
 							raise
 						except OSError:
@@ -401,15 +484,15 @@ class Firewall:
 class TrafficCapture:
 	def __init__(self, sysInterface):
 		self.sysInterface = sysInterface
-
+		self.netAdapter=sysInterface
 	def __CheckNetInterfaces(self):
 		avlSysInterfaces=getnic.interfaces()
 
 		self.netInterface=self.sysInterface
 		return self.netInterface
 
-	def __stopCapture(self):
-		__stopCapture__=False
+	def __enableCapture(self):
+		__enableCapture__=False
 
 	def Capture(self):
 		"""
@@ -436,7 +519,7 @@ class TrafficCapture:
 			
 			
 			#dir(capture.my_layer)#'IP' in capture
-			while  __stopCapture__:
+			while  __enableCapture__:
 				print(f'Checking Host:{ipList.hostName} status')
 				firewallStatusCheck=threading.Timer(10,ipList.HostStatusCheck)
 				firewallStatusCheck.start()
