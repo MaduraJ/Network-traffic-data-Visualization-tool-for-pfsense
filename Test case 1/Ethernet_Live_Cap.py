@@ -14,7 +14,7 @@ __enableCapture__=True
 global __StartLogging__
 __StartLogging__=False
 global __EnableTorBlocking__
-__EnableTorBlocking__=True
+__EnableTorBlocking__=Frue
 
 
 		
@@ -270,7 +270,7 @@ class Firewall:
 		RuleCreationStatusCode=StatusCode
 		try:
 			if (RuleCreationStatusCode==200):
-				print(f'{self.hostName} (OK) : {self.firewallRuleCreatedMSG}\n\n\n{self.firewallRuleCrInResponseJsonStrFormat}\n\n\n')
+				print(f'{self.hostName}(OK):{self.firewallRuleCreatedMSG}\n\n\n{self.firewallRuleCrInResponseJsonStrFormat}\n\n\n')
 			elif(self.RuleCreationStatusCode==400):
 				print(f'{self.hostName} {self.badRequestMSG400}\n{self.firewallRuleCrInResponseJsonStrFormat}')
 			elif(self.RuleCreationStatusCode==401):
@@ -301,6 +301,8 @@ class Firewall:
 				report=f"Subject:Unable to Reach Firewall\nThreat detected but Unable to create firewall rule\n Firewall Rule details \n{self.firewallRuleCrInResponseJsonStrFormat}\n Threat details \n{self.strHttpblResponse}"
 				smtpSession.sendmail(self.senderEmailAddress,self.receiverMail,report)
 				smtpSession.quit()
+				self.firewallRuleCrInResponseJsonStrFormat=None
+				self.strHttpblResponse=None
 				print("\n\nEmail Notification sent successfully!\n\n\n") 
 			else:
 				 smtpSession = smtplib.SMTP('smtp.gmail.com', 587)
@@ -308,6 +310,8 @@ class Firewall:
 				 smtpSession.login(self.senderEmailAddress,self.senderEmailPwd)
 				 report=f"Subject:Auomated Firewall Rule\nFirewall Rule details \n{self.firewallRuleCrInResponseJsonStrFormat}\n Threat details \n{self.strHttpblResponse}"
 				 smtpSession.sendmail(self.senderEmailAddress,self.receiverMail,report)
+				 self.firewallRuleCrInResponseJsonStrFormat=None
+				 self.strHttpblResponse=None
 				 smtpSession.quit()
 				 print("\n\nEmail Notification sent successfully!\n\n") 
 		except smtplib.SMTPServerDisconnected as e:
@@ -341,7 +345,7 @@ class Firewall:
 				self.fwRcRConvertedToPytohnDictionary=json.loads(response_content)
 				#print(type(self.fwRcRConvertedToPytohnDictionary))
 				self.strHttpblResponse=json.dumps(blackListResponse)
-				print(self.strHttpblResponse,type(self.strHttpblResponse))
+				print(f'{self.strHttpblResponse}\n{self.strHttpblResponse}')
 				self.firewallRuleCrInResponseJsonStrFormat=json.dumps(self.fwRcRConvertedToPytohnDictionary,indent=4)
 		except Exception as e:
 			raise
@@ -445,8 +449,14 @@ class Firewall:
 
 		#while(len(self.srcdstList)<100)
 		#Loop through Source and destination IPs
+		
 		for ips in self.srcdstList: 
 			try:
+				if(self.isFirewallUP==False):
+					checkWFstatusThread=threading.Thread(target=self.HostStatusCheck)
+					checkWFstatusThread.start()
+					checkWFstatusThread.join()
+					continue
 				if(ips in self.threatList):
 					continue
 				else:
@@ -455,8 +465,6 @@ class Firewall:
 						continue
 					self.httpblResponse = bl.query(ips)
 					print(self.httpblResponse['threat_score'],ips)
-					if (self.httpblResponse['threat_score']==None):
-						continue
 					if(self.httpblResponse['threat_score']>self.maximumAllowedThreatScore):
 						print(f'\n\n\nTHREAT DETECTED: {ips} WITH THREAT SCORE OF',self.httpblResponse ['threat_score'],"\n\n\n")
 						if ips in self.threatList:
@@ -747,5 +755,3 @@ if __name__ == '__main__':
 
 			
 
-
- 

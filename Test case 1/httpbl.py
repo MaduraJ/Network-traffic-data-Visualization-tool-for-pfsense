@@ -135,5 +135,5 @@ class HttpBL(object):
         # Return the response dictionary
         return {'days_since_last_activity': days if vt else None,
                 'name': None if vt else SEARCH_ENGINES[ts],
-                'threat_score': ts if vt else None,
+                'threat_score': ts if vt else 0,
                 'type': visitor_types if vt else [SEARCH_ENGINE]}
