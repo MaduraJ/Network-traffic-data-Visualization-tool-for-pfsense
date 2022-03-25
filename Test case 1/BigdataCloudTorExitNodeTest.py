@@ -7,7 +7,7 @@ offset="0"
 sort="ip"
 order="asc"
 localityLanguage="en"
-link=f"https://api.bigdatacloud.net/data/tor-exit-nodes-list?batchSize={batchSize}&offset={offset}&sort=+{sort}&localityLanguage={localityLanguage}&key={apiKey}"
+link=f"https://api.bigdatacloud.net/data/tor-exit-nodes-list?batchSize={batchSize}&offset={offset}&sort={sort}&order={order}&localityLanguage={localityLanguage}&key={apiKey}"
 headers={'Content-Type': 'application/json'}
 #payload='{"batchSize":"100","offset":"0","sort":"ip","order":"asc","localityLanguage":"en","key":""}'
 
@@ -21,9 +21,10 @@ def getTorExitNodes():
 		print(jsonString)
 		cDateTime=datetime.datetime.now()
 		print(type(dictResponse))
+		print(dictResponse["nodes"][9])
 		print(dictResponse["nodes"][0]["ip"],type(dictResponse['nodes'][0]))
 		print(dictResponse["total"])
-		print(dictResponse['nodes'][0]['carriers'][0]['rank'],type(dictResponse['nodes'][0]['carriers'][0]))
+		print(dictResponse['nodes'][9]['carriers'][0]['rank'],type(dictResponse['nodes'][0]['carriers'][0]))
 		strCData=str(cDateTime)
 		fStrCdata=strCData.replace(":",".")
 		#out_file=open(f"{fStrCdata}.json","w")
