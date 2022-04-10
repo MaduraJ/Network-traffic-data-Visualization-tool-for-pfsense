@@ -5,17 +5,18 @@ from get_nic import getnic
 import time
 import requests
 import bigdatacloudapi
-import datetime ,smtplib, multiprocessing 
-
+import datetime ,smtplib, multiprocessing
+from multiprocessing import Queue
 
 
 global __enableCapture__
 __enableCapture__=True
 global __StartLogging__
-__StartLogging__=False
+__StartLogging__=True
 global __EnableTorBlocking__
-__EnableTorBlocking__=Frue
-
+__EnableTorBlocking__=True
+global srcdstList 
+srcdstList = collections.deque()
 
 		
 class Firewall:
@@ -29,12 +30,14 @@ class Firewall:
 		self.dstIPList=set()
 		#self.srcdstList=set()
 		self.checkedIPset=set()
-		self.srcdstList = collections.deque()
+		self.TorcheckedIPset=set()
+		
 		self.blockedIPs={}
 
 		self.Mutex_lock=threading.Lock()
 		
 		self.threatList=set()
+		self.torThreatList=set()
 		self.twoTimeRepeat=set()
 		self.threeTimeRepeat=set()
 		self.firstUblockTimer=None
@@ -86,11 +89,13 @@ class Firewall:
 		self.bigdataCloudAbilableIps=None
 		self.TorFWResponseConToPytohnDict=None
 		self.TorWFRuleCrInResponseStrFormat=None
+		self.TorNodeinndexLocation=None
+		self.TorNodDetailsEmail=None
 		self.bigdataCloudApiKeyError="\n\nAPI key Error : Please check if the Big data cloud API key is correct or valid\n\n"
 
 
-		self.unableToReachMSG='\n\nUnable to Reach Firewall Check if the Network, Firewall is UP and Running\n\n'
-		self.continueTimeOutMSG='\n\nConnection Timeout: Check if the Network, Firewall is UP and Running\n\n'
+		self.unableToReachMSG='\n\nUnable to Reach Firewall Check whether the Network, Firewall is UP and Running\n\n'
+		self.continueTimeOutMSG='\n\nConnection Timeout: Check whether the Network, Firewall is UP and Running\n\n'
 		self.tooManyRedirectsMSG='\n\nToo Many Redirects: Bad URL\n\n'
 		self.requestLibraryErrorMSG='\n\nRequest Library Error\n\n'
 		self.firewallWorkingMsg=f'\n\n(OK): {self.hostName} is UP and Running\n\n'
@@ -151,27 +156,30 @@ class Firewall:
 			else:
 				pass
 			finally:
+				print(self.iterrableTorSet)
 				pass
 
 	def blackListTorNodes(self):
-		inndexL=None
+		
 		self.ruleCreationlink=f"https://{self.hostName}/api/v1/firewall/rule"
 		self.rule_Type='block'
-		for ips in self.srcdstList:
+		for ips in srcdstList:
+			#print(f'from TorNodeBlacklistThread {srcdstList}')
 			try:
-				if(ips in self.threatList):
+				if(ips in self.torThreatList):
+					continue
+				if(ips in self.TorcheckedIPset):
 					continue
 				else:
-					#print(f'{ips}')
+					print(f"[Tor] {ips}  ")
 					if(ips in self.iterrableTorSet):
 						try:
-							inndexL=self.iterrableTorSet.index(ips)
+							self.TorNodeinndexLocation=self.iterrableTorSet.index(ips)
 						except Exception as e:
 							raise e
-						print(f'\n\n\nTHREAT DETECTED: {ips} WITH RANK OF',self.TorExitNodeSet['nodes'][inndexL]["rank"],"\n\n\n")
-						self.Mutex_lock.acquire()
-						self.threatList.add(ips)
-						self.Mutex_lock.release()
+						print(f'\n\n\nTHREAT DETECTED: {ips} WITH RANK OF',self.TorExitNodeSet['nodes'][self.TorNodeinndexLocation]["rank"],"\n\n\n")
+						self.TorNodDetailsEmail=self.BDCDictResponse['nodes'][self.TorNodeinndexLocation]	
+						self.torThreatList.add(ips)
 
 						self.paraM={"client-id":"","client-token":"pfsense","type": "","interface": "","ipprotocol":"inet","protocol":"tcp/udp","src":"","srcport":"any","dst":"","dstport": "any","descr": "Automated api rule test"}
 						self.paraM['client-id']=self.client_ID
@@ -186,6 +194,93 @@ class Firewall:
 							TorJsonStrDictThread=threading.Thread(target=self.torFillJsonStrDict, args=(self.TorBlacklisFWResponse.content,))
 							TorJsonStrDictThread.start()
 							TorJsonStrDictThread.join()
+							try:
+								TorRuleCreationStatusCodeThread=threading.Thread(target=self.FirewallRuleCreationMsg,args=(self.TorBlacklisFWResponse.status_code,self.TorBlacklisFWResponse.content,True,))
+								TorRuleCreationStatusCodeThread.start()
+								TorRuleCreationStatusCodeThread.join()
+								LogRuleThread=threading.Thread(target=self.LogRule, args=(self.TorBlacklisFWResponse.content,' ',True,))
+								LogThreatWhenDownThread=threading.Thread(target=self.LogThreatWhenDown, args=('',True,))
+								if __StartLogging__:
+									LogRuleThread.start()
+									LogThreatWhenDownThread.start()
+									LogThreatWhenDownThread.join()
+								emailThread=threading.Thread(target=self.sendEmailNotification,args=(True,))
+								emailThread.start()
+								emailThread.join()
+							except TimeoutError:
+								try:
+									possibleFirewallDown=threading.Thread(target=self.HostStatusCheck)
+									possibleFirewallDown.start()
+									possibleFirewallDown.join()
+									if(self.isFirewallUP==False):
+										firewallDownNotification=threading.Thread(target=self.sendEmailNotification,args=(True,))
+										firewallDownNotification.start()
+										firewallDownNotification.join()
+								except Exception as e:
+									raise
+								else:
+									pass
+								finally:
+									pass
+							except Exception as e:
+								raise
+							else:
+								pass
+							finally:
+								pass
+						except IndexError:
+							print(srcdstList[-1:-5])
+							exit()
+						except requests.exceptions.Timeout as e:
+							print(f"{self.continueTimeOutMSG}")
+							try:
+								possibleFirewallDown=threading.Thread(target=self.HostStatusCheck)
+								possibleFirewallDown.start()
+								possibleFirewallDown.join()
+								if(self.isFirewallUP==False):
+									firewallDownNotification=threading.Thread(target=self.sendEmailNotification,args=(True,))
+									firewallDownNotification.start()
+									firewallDownNotification.join()
+							except Exception as e:
+								raise
+							else:
+								pass
+							finally:
+								pass
+						except requests.exceptions.TooManyRedirects:
+							print(f"{self.tooManyRedirectsMSG}")
+							try:
+								possibleFirewallDown=threading.Thread(target=self.HostStatusCheck)
+								possibleFirewallDown.start()
+								possibleFirewallDown.join()
+								if(self.isFirewallUP==False):
+									firewallDownNotification=threading.Thread(target=self.sendEmailNotification,args=(True,))
+									firewallDownNotification.start()
+									firewallDownNotification.join()
+							except Exception as e:
+								raise
+							else:
+								pass
+							finally:
+								pass
+						except requests.exceptions.RequestException as e:
+							print(f"{self.requestLibraryErrorMSG}")
+							try:
+								possibleFirewallDown=threading.Thread(target=self.HostStatusCheck)
+								possibleFirewallDown.start()
+								possibleFirewallDown.join()
+								if(self.isFirewallUP==False):
+									firewallDownNotification=threading.Thread(target=self.sendEmailNotification,args=(True,))
+									firewallDownNotification.start()
+									firewallDownNotification.join()
+							except Exception as e:
+								raise
+							else:
+								pass
+							finally:
+								pass
+						except OSError:
+							print(f"{self.tlsErrorMSG}")
 						except Exception as e:
 							raise
 						else:
@@ -193,11 +288,14 @@ class Firewall:
 						finally:
 							pass
 					else:
-						self.checkedIPset.add(ips)
+						self.TorcheckedIPset.add(ips)
 			except Exception as e:
 				raise
-			except RuntimeError:
-				print("MONITORING ACTIVE")
+			except RuntimeError as RunErr:
+				print(f"Runtime Error {RunErr}")
+			except KeyboardInterrupt:
+				exit()
+				print("Press Ctrl-C to terminate while statement")
 			else:
 				pass
 			finally:
@@ -242,7 +340,8 @@ class Firewall:
 		finally:
 			pass
 
-	def FirewallStatusCheckMsg(self,StatusCode):
+	'''Firewall Status Check Message == FirewallStatusCheckMsg is used to check whether firewall is in a up or down state. '''
+	def FirewallStatusCheckMsg(self,StatusCode): 
 		self.firewallStatus=StatusCode
 		if (self.firewallStatus==200):
 			self.isFirewallUP=True
@@ -266,21 +365,32 @@ class Firewall:
 			self.isFirewallUP=False
 			print(f'Unreachable : {self.hostName} | Status check fail {self.generalErrorMSG}')
 
-	def FirewallRuleCreationMsg(self,StatusCode,response_content):
-		RuleCreationStatusCode=StatusCode
+	def FirewallRuleCreationMsg(self,StatusCode,response_content,tor=False):
 		try:
-			if (RuleCreationStatusCode==200):
+			if (StatusCode==200):
 				print(f'{self.hostName}(OK):{self.firewallRuleCreatedMSG}\n\n\n{self.firewallRuleCrInResponseJsonStrFormat}\n\n\n')
-			elif(self.RuleCreationStatusCode==400):
+			elif(StatusCode==200 and tor==True):
+				print(f'{self.hostName}(OK):{self.firewallRuleCreatedMSG}\n\n\n')
+			elif(StatusCode==400):
 				print(f'{self.hostName} {self.badRequestMSG400}\n{self.firewallRuleCrInResponseJsonStrFormat}')
-			elif(self.RuleCreationStatusCode==401):
+			elif(StatusCode==400 and tor==True):
+				print(f'{self.hostName}(OK):{self.badRequestMSG400}\n\n\n')
+			elif(StatusCode==401):
 				print(f'{self.hostName} {self.unauthorizedMSG401}\n{self.firewallRuleCrInResponseJsonStrFormat}')
-			elif(self.RuleCreationStatusCode==403):
+			elif(StatusCode==401 and tor==True):
+				print(f'{self.hostName}(OK):{self.unauthorizedMSG401}\n\n\n')
+			elif(StatusCode==403):
 				print(f'{self.hostName} {self.forbiddenMSG403}\n{self.firewallRuleCrInResponseJsonStrFormat}')
-			elif(self.RuleCreationStatusCode==404):
+			elif(StatusCode==403 and tor==True):
+				print(f'{self.hostName}(OK):{self.forbiddenMSG403}\n\n\n')
+			elif(StatusCode==404):
 				print(f'{self.hostName} {self.notFoundMSG404}\n{self.firewallRuleCrInResponseJsonStrFormat}')
-			elif(self.RuleCreationStatusCode==500):
+			elif(StatusCode==404 and tor==True):
+				print(f'{self.hostName}(OK):{self.notFoundMSG404}\n\n\n')
+			elif(StatusCode==500):
 				print(f'{self.hostName} {self.serverErrorMSG500}\n{self.firewallRuleCrInResponseJsonStrFormat}')
+			elif(StatusCode==500 and tor==True):
+				print(f'{self.hostName}(OK):{self.serverErrorMSG500}\n\n\n')
 			else:
 				print(f'Unreachable : {self.hostName} | Firewall Rule Creation Fail {self.generalErrorMSG}\n{self.firewallRuleCrInResponseJsonStrFormat}')
 		except Exception as e:
@@ -290,30 +400,46 @@ class Firewall:
 		finally:
 			pass
 
-	def sendEmailNotification(self):
+	def sendEmailNotification(self,tor=False):
 		try:
 			if self.senderEmailAddress==None or self.senderEmailPwd==None or self.receiverMail==None:
 				print(f'Please proveide details to send notification')
-			if (self.isFirewallUP==False):
+			elif (self.isFirewallUP==False):
 				smtpSession = smtplib.SMTP('smtp.gmail.com', 587)
 				smtpSession.starttls()
 				smtpSession.login(self.senderEmailAddress,self.senderEmailPwd)
-				report=f"Subject:Unable to Reach Firewall\nThreat detected but Unable to create firewall rule\n Firewall Rule details \n{self.firewallRuleCrInResponseJsonStrFormat}\n Threat details \n{self.strHttpblResponse}"
-				smtpSession.sendmail(self.senderEmailAddress,self.receiverMail,report)
-				smtpSession.quit()
-				self.firewallRuleCrInResponseJsonStrFormat=None
-				self.strHttpblResponse=None
+				if tor==False:
+					report=f"Subject:Unable to Reach Firewall\nThreat detected but Unable to create firewall rule\n Firewall Rule details \n{self.firewallRuleCrInResponseJsonStrFormat}\n Threat details \n{self.strHttpblResponse}"
+					smtpSession.sendmail(self.senderEmailAddress,self.receiverMail,report)
+					self.firewallRuleCrInResponseJsonStrFormat=None
+					self.strHttpblResponse=None
+					smtpSession.quit()
+				else:
+					self.TorNodDetailsEmailStr=json.dumps(self.TorNodDetailsEmail,indent=4)
+					report=f"Subject:Unable to Reach Firewall\nTor Node detected but Unable to create firewall rule\n Firewall Rule details \n{self.TorWFRuleCrInResponseStrFormat}\n Node details \n{self.TorNodDetailsEmailStr}"		
+					smtpSession.sendmail(self.senderEmailAddress,self.receiverMail,report)
+					self.TorNodDetailsEmail=None
+					self.TorWFRuleCrInResponseStrFormat=None
+					smtpSession.quit()
 				print("\n\nEmail Notification sent successfully!\n\n\n") 
 			else:
-				 smtpSession = smtplib.SMTP('smtp.gmail.com', 587)
-				 smtpSession.starttls()
-				 smtpSession.login(self.senderEmailAddress,self.senderEmailPwd)
-				 report=f"Subject:Auomated Firewall Rule\nFirewall Rule details \n{self.firewallRuleCrInResponseJsonStrFormat}\n Threat details \n{self.strHttpblResponse}"
-				 smtpSession.sendmail(self.senderEmailAddress,self.receiverMail,report)
-				 self.firewallRuleCrInResponseJsonStrFormat=None
-				 self.strHttpblResponse=None
-				 smtpSession.quit()
-				 print("\n\nEmail Notification sent successfully!\n\n") 
+				smtpSession = smtplib.SMTP('smtp.gmail.com', 587)
+				smtpSession.starttls()
+				smtpSession.login(self.senderEmailAddress,self.senderEmailPwd)
+				if tor==False:
+					report=f"Subject:Auomated Firewall Rule\nFirewall Rule details \n{self.firewallRuleCrInResponseJsonStrFormat}\n Threat details \n{self.strHttpblResponse}"
+					smtpSession.sendmail(self.senderEmailAddress,self.receiverMail,report)
+					self.firewallRuleCrInResponseJsonStrFormat=None
+					self.strHttpblResponse=None
+					smtpSession.quit()
+				else:
+					self.TorNodDetailsEmailStr=json.dumps(self.TorNodDetailsEmail,indent=4)
+					report=f"Subject:Auomated Firewall Rule\nTor Node detected \n Firewall Rule details \n{self.TorWFRuleCrInResponseStrFormat}\n Node details \n{self.TorNodDetailsEmailStr}"
+					smtpSession.sendmail(self.senderEmailAddress,self.receiverMail,report)
+					self.TorNodDetailsEmail=None
+					self.TorWFRuleCrInResponseStrFormat=None
+					smtpSession.quit()
+				print("\n\nEmail Notification sent successfully!\n\n") 
 		except smtplib.SMTPServerDisconnected as e:
 			smtpSession.quit()
 			print("Server  unexpectedly disconnect")
@@ -345,7 +471,7 @@ class Firewall:
 				self.fwRcRConvertedToPytohnDictionary=json.loads(response_content)
 				#print(type(self.fwRcRConvertedToPytohnDictionary))
 				self.strHttpblResponse=json.dumps(blackListResponse)
-				print(f'{self.strHttpblResponse}\n{self.strHttpblResponse}')
+				print(f'{self.strHttpblResponse}\n\n\n')
 				self.firewallRuleCrInResponseJsonStrFormat=json.dumps(self.fwRcRConvertedToPytohnDictionary,indent=4)
 		except Exception as e:
 			raise
@@ -360,6 +486,7 @@ class Firewall:
 			else:
 				self.TorFWResponseConToPytohnDict=json.loads(response_content)
 				self.TorWFRuleCrInResponseStrFormat=json.dumps(self.TorFWResponseConToPytohnDict,indent=4)
+				print(f"{self.TorWFRuleCrInResponseStrFormat}")
 		except Exception as e:
 			raise
 		else:
@@ -368,67 +495,126 @@ class Firewall:
 			pass
 		
 
-	def LogRule(self,response_content,httpbl_response):
-		cTime=str(datetime.datetime.now())
-		formatedCTime=cTime.replace(":",".")	
+	def LogRule(self,response_content,httpbl_response,tor=False):
+		cTime=str(datetime.datetime.now())#current Time
+		formatedCTime=cTime.replace(":",".")#windows save 
 		self.logHttpblResponse=httpbl_response
 		self.fwRcRConvertedToPytohnDictionary=json.loads(response_content)
-		try:
-			out_file=open(f"Firewall_Rule_{formatedCTime}.json","w")
-			json.dump(self.fwRcRConvertedToPytohnDictionary,out_file,indent=4)
-			out_file.close()
-			print(f'\n\n\n {formatedCTime} Log Created \n\n\n')
-		except EOFError as e:
-			print(e)
-			out_file.close()
-		except Exception as e:
-			raise
+		if(tor==False):
+			try:
+				out_file=open(f"Firewall_Rule_{formatedCTime}.json","w")
+				json.dump(self.fwRcRConvertedToPytohnDictionary,out_file,indent=4)
+				out_file.close()
+				print(f'\n\n\n {formatedCTime} Log Created \n\n\n')
+			except EOFError as e:
+				print(e)
+				out_file.close()
+			except Exception as e:
+				out_file.close()
+				raise
+			else:
+				pass
+			finally:
+				pass
 		else:
-			pass
-		finally:
-			pass
+			try:
+				out_file=open(f"Firewall_Rule_Tor_Node_{formatedCTime}.json","w")
+				json.dump(self.TorFWResponseConToPytohnDict,out_file,indent=4)
+				out_file.close()
+				print(f'\n\n\n {formatedCTime} Log Created \n\n\n')
+			except EOFError as e:
+				print(e)
+				out_file.close()
+			except Exception as e:
+				out_file.close()
+				raise
+			else:
+				pass
+			finally:
+				pass
+
+	def LogThreatWhenDown(self,response='',tor=False):
+		cTime=str(datetime.datetime.now())#current Time
+		formatedCTime=cTime.replace(":",".")#windows save 	
+		if(tor==False):
+			try:
+				self.logHttpblResponse=response
+				out_file=open(f"HttpBL_Threat_Details_{formatedCTime}.json","w")
+				json.dump(self.logHttpblResponse,out_file,indent=4)
+				out_file.close()
+				print(f'\n\n\n {formatedCTime} HttpBL Threat Details Log Created \n\n\n')
+			except EOFError as e:
+				print(e)
+				out_file.close()
+			except Exception as e:
+				out_file.close()
+				raise
+			else:
+				pass
+			finally:
+				pass
+		else:
+			try:
+				out_file=open(f"Tor_Node_Details_{formatedCTime}.json","w")
+				json.dump(self.TorNodDetailsEmail,out_file,indent=4)
+				out_file.close()
+				self.TorNodDetailsEmailStr=None
+				print(f'\n\n\n {formatedCTime} Tor Node Details Log Created \n\n\n')
+			except EOFError as e:
+				print(e)
+				out_file.close()
+			except Exception as e:
+				out_file.close()
+				raise
+			else:
+				pass
+			finally:
+				pass
+
 		
 
-
-
-
 	def SourceIPs(self,srcIP):
-		self.srcIPList.add(srcIP)
-		for itmes in self.srcIPList:
-			if (itmes==" " or ""):
-				continue
-			if not self.srcIPList: #check empty status
-				continue
-			if itmes in self.srcdstList:
-				continue
-			else:
-				self.Mutex_lock.acquire()
-				self.srcdstList.append(itmes)
-				self.Mutex_lock.release()
+		#self.srcIPList.add(srcIP)
+		#for itmes in self.srcIPList:
+		if (srcIP==" " or ""):
+			pass
+		elif srcIP in srcdstList:
+			pass
+		else:
+			self.Mutex_lock.acquire(blocking=False)
+			srcdstList.append(srcIP)
+			#print(f"from Source list {srcdstList}")
+			self.Mutex_lock.release()
+		#if not self.srcIPList: #check empty status
+			#continue
+		
 
-		#self.srcdstList=self.srcIPList.copy()
+		#srcdstList=self.srcIPList.copy()
 
 	def DestinationIPs(self,dstIP):
-		self.dstIPList.add(dstIP)
-		for itmes in self.dstIPList:
-			if (itmes==" "or""):#check empty status
-				continue
-			if not self.dstIPList:
-				continue
-			if itmes in self.srcdstList:
-				continue
-			else:
-				self.Mutex_lock.acquire()
-				self.srcdstList.append(itmes)
-				self.Mutex_lock.release()
+		#self.dstIPList.add(dstIP)
+		#for itmes in self.dstIPList:
+		if (dstIP==" "or""):#check empty status
+			pass
+		elif (dstIP in srcdstList):
+			pass
+		else:
+			self.Mutex_lock.acquire(blocking=False)
+			srcdstList.append(dstIP)
+			#print(f"from DestinationIPs list {srcdstList}")
+			self.Mutex_lock.release()
 		#self.srcdstLis=self.dstIPList.copy()
+		#if not self.dstIPList:
+			#pass
+		
+		
 
 	def getSourceIPs(self):
-		#for x in self.srcdstList:
+		#for x in srcdstList:
 			#print(x)
 		#print(len(self.srcIPList))
-		#return self.srcdstList
-		print(self.srcdstList)
+		#return srcdstList
+		print(srcdstList)
 
 	def getDestinationIPs(self):
 		#for x in self.dstIPList:
@@ -436,21 +622,21 @@ class Firewall:
 		return self.dstIPList
 
 	def getSrcDstQueueLen(self):
-		self.dequeLenth=len(self.srcdstList)
+		self.dequeLenth=len(srcdstList)
 		return self.dequeLenth
 	
 
 	def checkBlackListStatus(self):
-		#print(self.srcdstList)
+		#print(srcdstList)
 		bl = httpbl.HttpBL(self.httpBLKey)
-		#print(self.srcdstList)
+		#print(srcdstList)
 		self.ruleCreationlink=f"https://{self.hostName}/api/v1/firewall/rule"
 		self.rule_Type='block'
 
-		#while(len(self.srcdstList)<100)
+		#while(len(srcdstList)<100)
 		#Loop through Source and destination IPs
 		
-		for ips in self.srcdstList: 
+		for ips in srcdstList: 
 			try:
 				if(self.isFirewallUP==False):
 					checkWFstatusThread=threading.Thread(target=self.HostStatusCheck)
@@ -500,8 +686,11 @@ class Firewall:
 							ruleCreationStatusCodeThread.start()
 							ruleCreationStatusCodeThread.join()
 							LogRuleThread=threading.Thread(target=self.LogRule, args=(self.firewallRuleCreationResponse.content,self.httpblResponse,))
+							LogThreatWhenDownThread=threading.Thread(target=self.LogThreatWhenDown, args=(self.httpblResponse,False,))
 							if __StartLogging__:
 								LogRuleThread.start()
+								LogThreatWhenDownThread.start()
+								LogThreatWhenDownThread.join()
 							
 							emailThread=threading.Thread(target=self.sendEmailNotification)
 							emailThread.start()
@@ -522,7 +711,7 @@ class Firewall:
 							finally:
 								pass
 						except IndexError:
-							print(self.srcdstList[-1:-5])
+							print(srcdstList[-1:-5])
 							exit()
 						except requests.exceptions.Timeout as e:
 							print(f"{self.continueTimeOutMSG}")
@@ -540,7 +729,6 @@ class Firewall:
 								pass
 							finally:
 								pass
-							continue
 						except requests.exceptions.TooManyRedirects:
 							print(f"{self.tooManyRedirectsMSG}")
 							try:
@@ -557,7 +745,6 @@ class Firewall:
 								pass
 							finally:
 								pass
-							continue
 						except requests.exceptions.RequestException as e:
 							print(f"{self.requestLibraryErrorMSG}")
 							try:
@@ -576,14 +763,18 @@ class Firewall:
 								pass
 						except Exception as e:
 							raise
+						except KeyboardInterrupt:
+							exit()
+							print("Press Ctrl-C to terminate while statement")
 						except OSError:
 							print(f"{self.tlsErrorMSG}")
 						else:
 							pass
 						finally:
 							pass
-					self.checkedIPset.add(ips)
-					#if((len(self.srcdstList))<=2):
+					else:
+						self.checkedIPset.add(ips)
+					#if((len(srcdstList))<=2):
 
 						#continue
 					#else:
@@ -591,8 +782,11 @@ class Firewall:
 						#self.srcdstList.pop()
 			except Exception as e:
 				raise
-			except RuntimeError:
-				print("MONITORING APPLICAION CRASHED")
+			except RuntimeError as RunErr:
+				print(f"Runtime Error {RunErr}")
+			except KeyboardInterrupt:
+				exit()
+				print("Press Ctrl-C to terminate while statement")
 			else:
 				pass
 			finally:
@@ -686,7 +880,7 @@ class TrafficCapture:
 					#print(pfSenseFW.bigdataCloudAbilableIps)
 					CreateTorIpSet.start()
 					CreateTorIpSet.join()
-
+				
 				for packets in capture.sniff_continuously():
 					if ('IP' in packets):
 						#sourceIPset.add(packets['IP'].src)
@@ -706,6 +900,11 @@ class TrafficCapture:
 						IPblacklistThread=threading.Thread(target=pfSenseFW.checkBlackListStatus)
 						IPblacklistThread.start()
 						IPblacklistThread.join()
+
+						if(__EnableTorBlocking__ and pfSenseFW.isFirewallUP):
+							blackListTorNodesThread=threading.Thread(target=pfSenseFW.blackListTorNodes)
+							blackListTorNodesThread.start()
+							blackListTorNodesThread.join()
 
 						
 
@@ -727,12 +926,13 @@ class TrafficCapture:
 
 		except EOFError as e:
 			print(e)
-		except RuntimeError:
-				print("MONITORING ACTIVE")
+		except RuntimeError as RunErr:
+				print(f"Runtime Error {RunErr}")
 		except Exception as e:
 			print(e)
 		except KeyboardInterrupt:
 			#type(capture)
+			exit()
 			print("Press Ctrl-C to terminate while statement")
 		else:
 			pass
@@ -747,10 +947,7 @@ if __name__ == '__main__':
 	gc.enable()
 	TestThread.start()
 	TestThread.join()
-	if(__EnableTorBlocking__ and pfSenseFW.isFirewallUP):
-		blackListTorNodesThread=multiprocessing.Process(target=pfSenseFW.blackListTorNodes)
-		blackListTorNodesThread.start()
-
+	
 
 
 			
