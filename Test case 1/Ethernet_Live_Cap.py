@@ -38,10 +38,12 @@ class TimeLaps:
 		self.BlockedItem=Item
 		self.endtime=datetime.timedelta(0,00,00)
 
+
 	def countdown(self,h=__UnblockHours__, m=__UnblockMinutes__, s=__UnblockSeconds__):
 		if __UnblockHours__ == 0 and __UnblockMinutes__== 0 and __UnblockSeconds__==0:
 			print(f'Invalid Time format | Hours, Minutes, Seconds cannot all be zero Auto Unblock Disabled \n\n\n')
 			__EnableAutomaticUnblock__=False
+
 		else:
 			total_seconds = __UnblockHours__ * 3600 +  __UnblockMinutes__ * 60 + __UnblockSeconds__
 			timer = datetime.timedelta(seconds = total_seconds)
@@ -49,7 +51,7 @@ class TimeLaps:
 				timer = datetime.timedelta(seconds = total_seconds)
 				time.sleep(1)
 				total_seconds -= 1
-				#print(f"item from time {self.BlockedItem} {timer} \n")
+				print(f"item from time {self.BlockedItem} {timer} \n")
 				if timer==self.endtime:
 					FWRuleInfo[FWRuleInfo.index(self.BlockedItem)]['Timer']='expired'
 					#print(f" {FWRuleInfo} Timer hit zero returing Ip\n\n\n")
@@ -80,7 +82,7 @@ class Firewall:
 		self.torThreatList=set()
 
 		
-		self.ipTimerObj={'ip':''}
+		
 		
 		self.twoTimeRepeat=set()
 		self.threeTimeRepeat=set()
@@ -173,17 +175,42 @@ class Firewall:
 				pass
 			finally:
 				pass
-	def unblockTimer(self):
+	def unblockTimer(self,ips=''):
+		blockIP=ips
+		threads=[]
+
 		for ips in FWRuleInfo:
-			if ips['Timer']=='active':
-				self.ipTimerObj['ip']=TimeLaps(ips)
-				threading.Thread(target=self.ipTimerObj['ip'].countdown).start()
+			if ips['ip']==blockIP and ips['Timer']=='active':
+				BlockTimer=TimeLaps(ips)
+				blockTimerThread=threading.Thread(target=BlockTimer.countdown).start()
+				threads.append(blockTimerThread)
+
+		#print(threads)	
 		#if globalIPTracker==None:
 		#self.FWRuleInfo.remove(item)
 		#print(f'IP timer Obj {self.ipTimerObj}')s
 
-	def UnblockIP(self):
-		pass
+	def Unblock(self):
+		unblockLink=f'https://{self.hostName}/api/v1/firewall/rule'
+		paraM={"client-id":"","client-token":"pfsense","type": "","tracker":""}
+		paraM['client-id']=self.client_ID
+		paraM['client-token']=self.clien_Token
+		paraM['type']="pass"
+		for ips in FWRuleInfo:
+			if ips['Timer']=='expired':
+				paraM["tracker":ips['RuleTrackerID']]
+				data=json.dumps(paraM)
+				print(type(data),data)
+				try:
+					self.unblockResponse=requests.put(unblockLink,verify=self.pemCert,data=data,headers=self.headers)
+					print(self.unblockResponse)
+				except Exception as e:
+					raise
+				else:
+					pass
+				finally:
+					pass
+
 	def getTotalBigDataCloudBatchSize(self):
 		endpoint=f"https://api.bigdatacloud.net/data/tor-exit-nodes-list?batchSize={str(self.bigdataCloudBatchSize)}&offset={self.bigdataCloudOffset}&sort={self.bigdataCloudSortBy}&order={self.bigdataCloudOrder}&localityLanguage={self.bigdataCloudLocalityLanguage}&key={self.bigdataCloudApiKey}"
 		headers={'Content-Type': 'application/json'}
@@ -257,16 +284,16 @@ class Firewall:
 						self.TorNodDetailsEmail=self.BDCDictResponse['nodes'][self.TorNodeinndexLocation]	
 						self.torThreatList.add(ips)
 
-						self.paraM={"client-id":"","client-token":"pfsense","type": "","interface": "","ipprotocol":"inet","protocol":"tcp/udp","src":"","srcport":"any","dst":"","dstport": "any","descr": "Automated api rule test"}
-						self.paraM['client-id']=self.client_ID
-						self.paraM['client-token']=self.clien_Token
-						self.paraM['type']=self.rule_Type
-						self.paraM['dst']=ips
-						self.paraM['src']=ips
-						self.paraM['interface']=self.rule_Interface
-						self.data=json.dumps(self.paraM)
+						paraM={"client-id":"","client-token":"pfsense","type": "","interface": "","ipprotocol":"inet","protocol":"tcp/udp","src":"","srcport":"any","dst":"","dstport": "any","descr": "Automated api rule"}
+						paraM['client-id']=self.client_ID
+						paraM['client-token']=self.clien_Token
+						paraM['type']=self.rule_Type
+						paraM['dst']=ips
+						paraM['src']=ips
+						paraM['interface']=self.rule_Interface
+						self.TorRData=json.dumps(paraM)
 						try:
-							self.TorBlacklisFWResponse=requests.post(self.ruleCreationlink,verify=self.pemCert,data=self.data,headers=self.headers)
+							self.TorBlacklisFWResponse=requests.post(self.ruleCreationlink,verify=self.pemCert,data=self.TorRData,headers=self.headers)
 							TorJsonStrDictThread=threading.Thread(target=self.torFillJsonStrDict, args=(self.TorBlacklisFWResponse.content,))
 							TorJsonStrDictThread.start()
 							TorJsonStrDictThread.join()
@@ -274,9 +301,7 @@ class Firewall:
 							ruleDetailsThread=threading.Thread(target=self.addRuleDetails,args=(ips,self.TorFWResponseConToPytohnDict['data']['tracker']))
 							ruleDetailsThread.start()
 							ruleDetailsThread.join()
-							if __EnableAutomaticUnblock__:
-								unblockTimerThread=threading.Thread(target=self.unblockTimer)
-								unblockTimerThread.start()
+							
 							try:
 								TorRuleCreationStatusCodeThread=threading.Thread(target=self.FirewallRuleCreationMsg,args=(self.TorBlacklisFWResponse.status_code,self.TorBlacklisFWResponse.content,True,))
 								TorRuleCreationStatusCodeThread.start()
@@ -757,19 +782,19 @@ class Firewall:
 
 						#need to create way to modify the rule
 
-						self.paraM={"client-id":"","client-token":"pfsense","type": "","interface": "","ipprotocol":"inet","protocol":"tcp/udp","src":"","srcport":"any","dst":"","dstport": "any","descr": "Automated api rule test"}
+						paraM={"client-id":"","client-token":"pfsense","type": "","interface": "","ipprotocol":"inet","protocol":"tcp/udp","src":"","srcport":"any","dst":"","dstport": "any","descr": "Automated api rule"}
 						
-						self.paraM['client-id']=self.client_ID
-						self.paraM['client-token']=self.clien_Token
-						self.paraM['type']=self.rule_Type
-						self.paraM['dst']=ips
-						self.paraM['src']=ips
-						self.paraM['interface']=self.rule_Interface
-						self.data=json.dumps(self.paraM)
+						paraM['client-id']=self.client_ID
+						paraM['client-token']=self.clien_Token
+						paraM['type']=self.rule_Type
+						paraM['dst']=ips
+						paraM['src']=ips
+						paraM['interface']=self.rule_Interface
+						self.SpamRData=json.dumps(paraM)
 						
 
 						try:
-							self.firewallRuleCreationResponse=requests.post(self.ruleCreationlink,verify=self.pemCert,data=self.data,headers=self.headers)
+							self.firewallRuleCreationResponse=requests.post(self.ruleCreationlink,verify=self.pemCert,data=self.SpamRData,headers=self.headers)
 
 							fillJsonStrDictThread=threading.Thread(target=self.fillJsonStrDict, args=(self.firewallRuleCreationResponse.content,self.httpblResponse,))
 							fillJsonStrDictThread.start()
@@ -783,7 +808,7 @@ class Firewall:
 							ruleDetailsThread.start()
 							ruleDetailsThread.join()
 							if __EnableAutomaticUnblock__:
-								unblockTimerThread=threading.Thread(target=self.unblockTimer)
+								unblockTimerThread=threading.Thread(target=self.unblockTimer , args=(ips,))
 								unblockTimerThread.start()
 
 							LogRuleThread=threading.Thread(target=self.LogRule, args=(self.firewallRuleCreationResponse.content,self.httpblResponse,))
