@@ -1,4 +1,4 @@
-import pyshark, httpbl, json, threading #threading non-functional 
+import pyshark, httpbl, json, threading,socket #threading non-functional 
 import collections, gc ,re
 from json import JSONEncoder
 from get_nic import getnic 
@@ -21,6 +21,10 @@ global srcdstList
 srcdstList = collections.deque()
 global __EnableEmailNotification__
 __EnableEmailNotification__=False
+global __EnableIPResolver__
+__EnableIPResolver__=False
+
+
 
 global __UnblockHours__
 global __UnblockMinutes__
@@ -227,11 +231,25 @@ class Firewall:
 		finally:
 			pass
 
+	def resolveIP(self,IpAddress):
+		try:
+			IP=socket.gethostbyaddr(IpAddress)
+			print(IP[0],IP[2])
+
+		except socket.herror as e:
+			print(f"{IpAddress} Host not found")
+		except Exception as e:
+			raise
+		else:
+			pass
+		finally:
+			pass
+		
+
 	def CreateTorBlacklistList(self):
 		endpoint=f"https://api.bigdatacloud.net/data/tor-exit-nodes-list?batchSize={self.bigdataCloudBatchSize}&offset={self.bigdataCloudOffset}&sort={self.bigdataCloudSortBy}&order={self.bigdataCloudOrder}&localityLanguage={self.bigdataCloudLocalityLanguage}&key={self.bigdataCloudApiKey}"
 		headers={'Content-Type': 'application/json'}
 		added=0
-		
 		if(self.bigdataCloudBatchSize==None):
 			print(f"\n\n\nPlease proveide Big Data Cloud batch size \n\n\n")
 		else:
@@ -262,7 +280,6 @@ class Firewall:
 				pass
 
 	def blackListTorNodes(self):
-		
 		self.ruleCreationlink=f"https://{self.hostName}/api/v1/firewall/rule"
 		self.rule_Type='block'
 		for ips in srcdstList:
@@ -274,7 +291,13 @@ class Firewall:
 				if(ips in self.TorcheckedIPset):
 					continue
 				else:
-					print(f"[Tor] {ips}  ")
+					if __EnableIPResolver__:
+						IPResolverTorThread=threading.Thread(target=(self.resolveIP), args=(ips,))
+						IPResolverTorThread.start()
+						IPResolverTorThread.join()
+						print(f"[Tor] {ips} \n\n")
+					else:
+						print(f"[Tor] {ips} \n")
 					if(ips in self.iterrableTorSet):
 						try:
 							self.TorNodeinndexLocation=self.iterrableTorSet.index(ips)
@@ -770,7 +793,13 @@ class Firewall:
 					if ips in self.checkedIPset:
 						continue
 					self.httpblResponse = bl.query(ips)
-					print(self.httpblResponse['threat_score'],ips)
+					if __EnableIPResolver__:
+						IPResolverThread=threading.Thread(target=(self.resolveIP), args=(ips,))
+						IPResolverThread.start()
+						IPResolverThread.join()
+						print(f"{self.httpblResponse['threat_score']} {ips} \n\n")
+					else:
+						print(f"{self.httpblResponse['threat_score']} {ips}\n")
 					if(self.httpblResponse['threat_score']>self.maximumAllowedThreatScore):
 						print(f'\n\n\nTHREAT DETECTED: {ips} WITH THREAT SCORE OF',self.httpblResponse ['threat_score'],"\n\n\n")
 						if ips in self.threatList:
