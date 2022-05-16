@@ -14,15 +14,26 @@ __enableCapture__=True
 global __StartLogging__
 __StartLogging__=False
 global __EnableTorBlocking__
-__EnableTorBlocking__=False
-global __EnableAutomaticUnblock__
-__EnableAutomaticUnblock__=True
+__EnableTorBlocking__=True
 global srcdstList 
 srcdstList = collections.deque()
 global __EnableEmailNotification__
-__EnableEmailNotification__=False
+__EnableEmailNotification__=True
 global __EnableIPResolver__
 __EnableIPResolver__=False
+
+#------Automated Timer Parameters-------
+global __EnableAutomaticUnblockSpam__
+__EnableAutomaticUnblockSpam__=True
+global __EnableAutomaticUnblockTor__
+__EnableAutomaticUnblockTor__=True
+global  __EnableFWRUnblockEmailNotification__
+__EnableFWRUnblockEmailNotification__=True
+global __LogAutomatedRuleUnblock__
+__LogAutomatedRuleUnblock__=True
+global __ShowTimeLeft__
+__ShowTimeLeft__=False
+
 
 
 
@@ -31,7 +42,7 @@ global __UnblockMinutes__
 global __UnblockSeconds__
 __UnblockHours__=0
 __UnblockMinutes__=0
-__UnblockSeconds__=60
+__UnblockSeconds__=20
 global FWRuleInfo
 FWRuleInfo=collections.deque()
 
@@ -41,12 +52,15 @@ class TimeLaps:
 	def __init__(self,Item):
 		self.BlockedItem=Item
 		self.endtime=datetime.timedelta(0,00,00)
+		
 
 
 	def countdown(self,h=__UnblockHours__, m=__UnblockMinutes__, s=__UnblockSeconds__):
+		pfSenseFW=Firewall()
 		if __UnblockHours__ == 0 and __UnblockMinutes__== 0 and __UnblockSeconds__==0:
-			print(f'Invalid Time format | Hours, Minutes, Seconds cannot all be zero Auto Unblock Disabled \n\n\n')
-			__EnableAutomaticUnblock__=False
+			print(f'Invalid Time format | Hours, Minutes, Seconds cannot all be zero | Auto Unblock Disabled \n\n\n')
+			__EnableAutomaticUnblockSpam__=False
+			__EnableAutomaticUnblockTor__=False
 
 		else:
 			total_seconds = __UnblockHours__ * 3600 +  __UnblockMinutes__ * 60 + __UnblockSeconds__
@@ -55,9 +69,11 @@ class TimeLaps:
 				timer = datetime.timedelta(seconds = total_seconds)
 				time.sleep(1)
 				total_seconds -= 1
-				print(f"item from time {self.BlockedItem} {timer} \n")
+				if __ShowTimeLeft__ and (__EnableAutomaticUnblockTor__ or __EnableAutomaticUnblockSpam__):
+					print(f"item from time {self.BlockedItem} {timer} \n")
 				if timer==self.endtime:
 					FWRuleInfo[FWRuleInfo.index(self.BlockedItem)]['Timer']='expired'
+					pfSenseFW.UnblockFWR()
 					#print(f" {FWRuleInfo} Timer hit zero returing Ip\n\n\n")
 					
 					#print(f"\n\n global IP {globalIP['ip']}")
@@ -71,6 +87,16 @@ class Firewall:
 	def __init__(self):
 		self.pemCert='pfsense1.localdomain.pem'
 		self.hostName="192.168.1.100"
+		self.senderEmailAddress=""
+		self.senderEmailPwd=""
+		self.receiverMail=""
+		self.httpBLKey=''
+		self.bigdataCloudApiKey=""
+		self.srcdstListMaxSize=25
+		self.showIPListUpdates=False
+
+		self.maximumAllowedThreatScore=10
+		self.bigdataCloudBatchSize=50
 
 
 		self.srcIPList=set()
@@ -81,7 +107,6 @@ class Firewall:
 		
 
 		self.Mutex_lock=threading.Lock()
-		
 		self.threatList=set()
 		self.torThreatList=set()
 
@@ -104,14 +129,6 @@ class Firewall:
 		
 		
 
-		self.httpBLKey=''
-		self.maximumAllowedThreatScore=10
-		
-		
-		self.senderEmailAddress=""
-		self.senderEmailPwd=""
-		self.receiverMail=""
-
 		self.dequeLenth=None
 		self.skipIPlist=['162.159.200.1',"162.159.200.123"]
 
@@ -128,8 +145,8 @@ class Firewall:
 		self.headers={'Content-Type': 'application/json'}
 
 	
-		self.bigdataCloudApiKey=""
-		self.bigdataCloudBatchSize=50
+		
+		
 		self.TorExitNodeSet={'nodes':[]}
 		self.iterrableTorSet=[]
 		self.BDCDictResponse=None
@@ -194,7 +211,10 @@ class Firewall:
 		#self.FWRuleInfo.remove(item)
 		#print(f'IP timer Obj {self.ipTimerObj}')s
 
-	def Unblock(self):
+
+	def UnblockFWR(self):
+		cTime=str(datetime.datetime.now())#current Time
+		formatedCTime=cTime.replace(":",".")#windows save 
 		unblockLink=f'https://{self.hostName}/api/v1/firewall/rule'
 		paraM={"client-id":"","client-token":"pfsense","type": "","tracker":""}
 		paraM['client-id']=self.client_ID
@@ -202,18 +222,44 @@ class Firewall:
 		paraM['type']="pass"
 		for ips in FWRuleInfo:
 			if ips['Timer']=='expired':
-				paraM["tracker":ips['RuleTrackerID']]
+				paraM['tracker']=ips['RuleTrackerID']
 				data=json.dumps(paraM)
-				print(type(data),data)
 				try:
-					self.unblockResponse=requests.put(unblockLink,verify=self.pemCert,data=data,headers=self.headers)
-					print(self.unblockResponse)
+					if __EnableFWRUnblockEmailNotification__:
+						self.unblockResponse=requests.put(unblockLink,verify=self.pemCert,data=data,headers=self.headers)
+						smtpSession = smtplib.SMTP('smtp.gmail.com', 587)
+						smtpSession.starttls()
+						smtpSession.login(self.senderEmailAddress,self.senderEmailPwd)
+						DictUnblockResponse=json.loads(self.unblockResponse.content)
+						StrUnblockResponse=json.dumps(DictUnblockResponse,indent=4)
+						report=f"Subject:Automated Rule Unblock | Threat Allowed\n Firewall Rule details\n{StrUnblockResponse}\n"
+						smtpSession.sendmail(self.senderEmailAddress,self.receiverMail,report)
+						smtpSession.quit()
 				except Exception as e:
 					raise
 				else:
 					pass
 				finally:
 					pass
+				try:
+					if __LogAutomatedRuleUnblock__:
+						out_file=open(f"Firewall_Rule_Unblock{formatedCTime}.json","w")
+						json.dump(DictUnblockResponse,out_file,indent=4)
+						out_file.close()
+						print(f'\n\n\n {formatedCTime} Log Created \n\n\n')
+				except EOFError as e:
+					print(e)
+					out_file.close()
+				except Exception as e:
+					out_file.close()
+					raise
+				else:
+					pass
+				finally:
+					pass
+					
+			
+				
 
 	def getTotalBigDataCloudBatchSize(self):
 		endpoint=f"https://api.bigdatacloud.net/data/tor-exit-nodes-list?batchSize={str(self.bigdataCloudBatchSize)}&offset={self.bigdataCloudOffset}&sort={self.bigdataCloudSortBy}&order={self.bigdataCloudOrder}&localityLanguage={self.bigdataCloudLocalityLanguage}&key={self.bigdataCloudApiKey}"
@@ -341,6 +387,10 @@ class Firewall:
 									emailThread=threading.Thread(target=self.sendEmailNotification,args=(True,))
 									emailThread.start()
 									emailThread.join()
+								if __EnableAutomaticUnblockTor__:
+									unblockTimerThread=threading.Thread(target=self.unblockTimer , args=(ips,))
+									unblockTimerThread.start()
+
 							except TimeoutError:
 								try:
 									possibleFirewallDown=threading.Thread(target=self.HostStatusCheck)
@@ -709,6 +759,10 @@ class Firewall:
 	def SourceIPs(self,srcIP):
 		#self.srcIPList.add(srcIP)
 		#for itmes in self.srcIPList:
+		if(len(srcdstList)>=self.srcdstListMaxSize):
+			if(self.showIPListUpdates):
+				print(f"Source IP list cleared\n\n")
+			srcdstList.popleft()
 		if (srcIP==" " or ""):
 			pass
 		elif(srcIP in srcdstList):
@@ -732,6 +786,10 @@ class Firewall:
 	def DestinationIPs(self,dstIP):
 		#self.dstIPList.add(dstIP)
 		#for itmes in self.dstIPList:
+		if(len(srcdstList)>=self.srcdstListMaxSize):
+			if(self.showIPListUpdates):
+				print(f"Destination IP list cleared\n\n")
+			srcdstList.popleft()
 		if (dstIP==" "or""):#check empty status
 			pass
 		elif(dstIP in srcdstList):
@@ -778,7 +836,6 @@ class Firewall:
 
 		#while(len(srcdstList)<100)
 		#Loop through Source and destination IPs
-		
 		for ips in srcdstList: 
 			try:
 				if(self.isFirewallUP==False):
@@ -836,7 +893,7 @@ class Firewall:
 							ruleDetailsThread=threading.Thread(target=self.addRuleDetails,args=(ips,self.fwRcRConvertedToPytohnDictionary['data']['tracker']))
 							ruleDetailsThread.start()
 							ruleDetailsThread.join()
-							if __EnableAutomaticUnblock__:
+							if __EnableAutomaticUnblockSpam__:
 								unblockTimerThread=threading.Thread(target=self.unblockTimer , args=(ips,))
 								unblockTimerThread.start()
 
@@ -1095,8 +1152,8 @@ class TrafficCapture:
 
 
 if __name__ == '__main__':
-	test1=TrafficCapture("Ethernet")
-	TestThread=threading.Thread(target=test1.Capture)
+	SpamANDTorNodeBlock=TrafficCapture("Ethernet")
+	TestThread=threading.Thread(target=SpamANDTorNodeBlock.Capture)
 	gc.enable()
 	TestThread.start()
 	TestThread.join()
