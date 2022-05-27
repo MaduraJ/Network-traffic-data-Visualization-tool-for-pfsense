@@ -12,7 +12,7 @@ from multiprocessing import Queue
 global __enableCapture__
 __enableCapture__=True
 global __StartLogging__
-__StartLogging__=False
+__StartLogging__=True
 global __EnableTorBlocking__
 __EnableTorBlocking__=True
 global srcdstList 
@@ -20,7 +20,7 @@ srcdstList = collections.deque()
 global __EnableEmailNotification__
 __EnableEmailNotification__=True
 global __EnableIPResolver__
-__EnableIPResolver__=False
+__EnableIPResolver__=True
 
 #------Automated Timer Parameters-------
 global __EnableAutomaticUnblockSpam__
@@ -42,7 +42,7 @@ global __UnblockMinutes__
 global __UnblockSeconds__
 __UnblockHours__=0
 __UnblockMinutes__=0
-__UnblockSeconds__=20
+__UnblockSeconds__=40
 global FWRuleInfo
 FWRuleInfo=collections.deque()
 
@@ -74,7 +74,7 @@ class TimeLaps:
 				if timer==self.endtime:
 					FWRuleInfo[FWRuleInfo.index(self.BlockedItem)]['Timer']='expired'
 					pfSenseFW.UnblockFWR()
-					#print(f" {FWRuleInfo} Timer hit zero returing Ip\n\n\n")
+					print(f" {FWRuleInfo[FWRuleInfo.index(self.BlockedItem)]} Timer expired\n\n\n")
 					
 					#print(f"\n\n global IP {globalIP['ip']}")
 					#if self.BlockedItem['ip'] in globalIP['ip']:
@@ -296,8 +296,11 @@ class Firewall:
 		endpoint=f"https://api.bigdatacloud.net/data/tor-exit-nodes-list?batchSize={self.bigdataCloudBatchSize}&offset={self.bigdataCloudOffset}&sort={self.bigdataCloudSortBy}&order={self.bigdataCloudOrder}&localityLanguage={self.bigdataCloudLocalityLanguage}&key={self.bigdataCloudApiKey}"
 		headers={'Content-Type': 'application/json'}
 		added=0
-		if(self.bigdataCloudBatchSize==None):
+		if(self.bigdataCloudBatchSize==None ):
 			print(f"\n\n\nPlease proveide Big Data Cloud batch size \n\n\n")
+		elif(self.bigdataCloudApiKey==None):
+			print(f"\n\n\nPlease proveide Big Data cloud API key | Tor node monitoring Is Disabled\n\n\n")
+			__EnableTorBlocking__==False
 		else:
 			try:
 				bigdatacloudResponse=requests.get(endpoint,headers=headers)
@@ -992,6 +995,8 @@ class Firewall:
 					#else:
 						#print("MONITORING ACTIVEcl")
 						#self.srcdstList.pop()
+			except UnicodeError as e:
+				print(f"\n\n\nInstallation Error Please Check the Installation Guide\n\n\n")
 			except Exception as e:
 				raise
 			except RuntimeError as RunErr:
@@ -1111,7 +1116,7 @@ class TrafficCapture:
 						IPblacklistThread.start()
 						IPblacklistThread.join()
 
-						if(__EnableTorBlocking__ and pfSenseFW.isFirewallUP):
+						if(__EnableTorBlocking__ and pfSenseFW.isFirewallUP and not pfSenseFW.bigdataCloudApiKey==None):
 							blackListTorNodesThread=threading.Thread(target=pfSenseFW.blackListTorNodes)
 							blackListTorNodesThread.start()
 							blackListTorNodesThread.join()
