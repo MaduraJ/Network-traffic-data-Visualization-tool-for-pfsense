@@ -1,5 +1,0 @@
-curl  -H "Content-Type: application/json" -d '{"client-id":"admin","client-token":"pfsense"}' --ssl-no-revoke -X GET https://192.168.1.100/api/v1/system/arp
-curl  -H Content-Type applicationjson -d '{client-idadmin,client-tokenpfsense}' --ssl-no-revoke -X GET https192.168.1.100apiv1systemarp
-162.159.200.1
-220.247.242.85 this is else print
-162.159.200.123 this is else print
