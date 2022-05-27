@@ -10,6 +10,7 @@ pemCert='pfsense1.localdomain.pem'
 try:
 	response=requests.get(link)
 	print(response.url)
+	response(type(response))
 	print(response.status_code)
 	#print(json.dumps(response.content))
 	print(response.content)

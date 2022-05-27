@@ -11,26 +11,27 @@ data2['src']=stringIP
 data2['dst']=stringIP
 data3=json.dumps(data2)
 pemCert='pfsense1.localdomain.pem'
-chkStatus= "https://192.168.1.100/api/v1/firewall/states"
-auth='{"client-id":"admin","client-token":"pfsense"}'
 try:
-	#response=requests.post(link,verify=pemCert,data=data3,headers=headers)
-	response=requests.get(chkStatus,verify=pemCert,data=auth)
-	print(response.content)
-	responseDict=json.loads(response.content)
-	print(f"{responseDict} \n\n\n")
-	jsonStr=json.dumps(responseDict,indent=3)
-	print(jsonStr)
+	response=requests.post(link,verify=pemCert,data=data3,headers=headers)
+
 	#print(type(data2))
 	#print(data2)
 	#print(data3)
 	#print(response.url)
 	#print(response)
-	#dataobj=json.loads(response.content)
-	#dataobj['code']=404
+	ConvertedToPytohnDictionary=json.loads(response.content)
+	ConvertedToPytohnDictionary['code']=404
+	print(type(ConvertedToPytohnDictionary['data']),"Python data Dictionary")
+	print(ConvertedToPytohnDictionary['data']['type'])
+	print(ConvertedToPytohnDictionary['data']['source']['address'])
+	#print(ConvertedToPytohnDictionary['descr'])
+	#print(ConvertedToPytohnDictionary['tracker'])
+
 	#print(dataobj)
-	#print()
-	#print(type(dataobj))
+	print(type(ConvertedToPytohnDictionary), "Dictionary")
+	ConvertedToJsonString=json.dumps(ConvertedToPytohnDictionary,indent=4)
+	print(ConvertedToJsonString)
+	#print(type(ConvertedToJsonString))
 except Exception as e:
 	print(e)
 else:
